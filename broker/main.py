@@ -1,6 +1,19 @@
 from fastapi import FastAPI
+import time
 
 app = FastAPI()
+
+
+@app.middleware("http")
+async def add_process_time_header(request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    response.headers["X-Process-Time"] = str(f'{process_time:0.4f} sec')
+    return response
+
+
+queues = {}
 
 
 @app.get("/ping")
@@ -12,8 +25,8 @@ async def ping():
 # async def say_hello(name: str):
 #     return {"message": f"Hello {name}"}
 
-@app.post("/topics")
-async def create_topic():
+@app.post("/topics/{name}")
+async def create_topic(name: str):
     ...
 
 
@@ -22,28 +35,26 @@ async def list_topics():
     ...
 
 
-@app.post("/consumer/register")
-async def register_consumer():
+@app.post("/consumer/register/{topic}")
+async def register_consumer(topic: str):
     ...
 
 
-@app.post("/producer/register")
-async def register_producer():
+@app.post("/producer/register/{topic}")
+async def register_producer(topic: str):
     ...
 
 
-@app.post("/producer/produce")
-async def enqueue():
+@app.post("/producer/produce/{topic}")
+async def enqueue(topic: str):
     ...
 
 
-@app.get("/consumer/consume")
-async def dequeue():
+@app.get("/consumer/consume/{topic}")
+async def dequeue(topic: str):
     ...
 
 
-@app.get("/size")
-async def size():
+@app.get("/size/{topic}")
+async def size(topic: str):
     ...
-
-
