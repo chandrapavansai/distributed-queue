@@ -7,7 +7,7 @@ services:
       - 80:80
       - 5678:5678
     volumes:
-      - .:/code
+      - ds_assgn_1_volume:/code
     depends_on:
       - postgres
 
@@ -17,7 +17,7 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     volumes:
-      - .:/var/lib/postgresSQL/data
+      - ds_assgn_1_volume:/var/lib/postgresSQL/data
     ports:
       - 5432:5432
   
@@ -29,3 +29,6 @@ services:
       - PGADMIN_LISTEN_PORT=5050
     ports:
       - 5050:5050
+
+volumes:
+  ds_assgn_1_volume: {}
