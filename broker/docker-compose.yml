@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:12
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - .:/var/lib/postgresSQL/data
+    ports:
+      - 5432:5432
+  
+  pg-admin:
+    image: dpage/pgadmin4:6
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@email.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+      - PGADMIN_LISTEN_PORT=5050
+    ports:
+      - 5050:5050
+  app:
+    build: .
+    container_name: distributed-queue-broker
+    command: uvicorn main:app --host 0.0.0.0 --port 80 --reload
+    environment:
+      - DB_HOST=postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_PORT=5432
+      - DB_NAME=distriq
+    ports:
+      - 80:80
+      - 5678:5678
+    volumes:
+      - .:/code
+    depends_on:
+      - postgres
+
+  

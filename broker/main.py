@@ -1,7 +1,14 @@
 from fastapi import FastAPI
 import time
-
+from database import db
 app = FastAPI()
+
+cursor = db.cursor()
+# Print PostgreSQL details
+print("PostgreSQL server information")
+print(db.get_dsn_parameters(), "\n")
+
+
 
 
 @app.middleware("http")
@@ -13,7 +20,6 @@ async def add_process_time_header(request, call_next):
     return response
 
 
-queues = {}
 
 
 @app.get("/ping")
