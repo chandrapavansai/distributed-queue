@@ -2,3 +2,6 @@
 
 # Ignore python bytecode files
 *.pyc
+
+# Ignore virtualenv
+.venv/
