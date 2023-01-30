@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI,status,HTTPException
 import time
 from database import db
 app = FastAPI()
@@ -7,8 +7,6 @@ cursor = db.cursor()
 # Print PostgreSQL details
 print("PostgreSQL server information")
 print(db.get_dsn_parameters(), "\n")
-
-
 
 
 @app.middleware("http")
@@ -20,11 +18,9 @@ async def add_process_time_header(request, call_next):
     return response
 
 
-
-
 @app.get("/ping")
 async def ping():
-    return {"message": "pong"}
+    return {"message": "pong1"}
 
 
 # @app.get("/hello/{name}")
@@ -63,4 +59,29 @@ async def dequeue(topic: str):
 
 @app.get("/size/{topic}")
 async def size(topic: str):
-    ...
+    """Returns the size of the queue for a given topic.
+
+    Args:
+        topic (str): The topic name
+
+    Raises:
+        HTTPException: If the topic does not exist
+
+    Returns:
+        {
+            "size": _size_
+        }: The size of the queue for the given topic
+    """
+
+    cursor.execute("SELECT COUNT(*) FROM topic WHERE name = %s", (topic,))
+    # Check if topic exists in topic table
+    if cursor.rowcount is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
+
+    cursor.execute("SELECT COUNT(*) FROM queue WHERE topic_name = %s", (topic,))
+    count = cursor.fetchone()[0]
+    print(cursor.fetchone())
+    return {"size": count}
+    
+
+

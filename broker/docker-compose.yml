@@ -5,7 +5,7 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     volumes:
-      - .:/var/lib/postgresSQL/data
+      - ds_assgn_1_volume:/var/lib/postgresSQL/data
     ports:
       - 5432:5432
   
