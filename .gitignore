@@ -6,3 +6,7 @@
 # Ignore virtualenv
 .venv/
 env/
+
+# Ignore broker/db-data folder
+broker/db-data/
+
