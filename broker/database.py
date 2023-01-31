@@ -1,10 +1,11 @@
 import os
 import psycopg2
-from dotenv import load_dotenv, find_dotenv
+
+# from dotenv import load_dotenv, find_dotenv
 
 # Take the credentials from the .env file
-env_path = load_dotenv()
-load_dotenv(env_path)
+# env_path = find_dotenv()
+# load_dotenv(env_path)
 
 
 DATABASE_NAME = os.getenv('DB_NAME') if os.getenv('DB_NAME') is not None else 'ds-assgn-1'
