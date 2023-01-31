@@ -1,7 +1,14 @@
 # End to end testing as suggested in piazza
 
+import os
+import sys
+# Add the parent directory to the path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add disqueue to the path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
 # Imports
-from ..disqueue import Producer, Consumer
+from disqueue import Producer, Consumer
 import threading
 import random
 import time
