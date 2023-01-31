@@ -24,14 +24,14 @@ async def add_process_time_header(request, call_next):
 
 @app.get("/ping")
 async def ping():
-    return {"message": "pong1"}
+    return {"message": "pong"}
 
 
 # @app.get("/hello/{name}")
 # async def say_hello(name: str):
 #     return {"message": f"Hello {name}"}
 
-@app.post("/topics/{name}")
+@app.post("/topics")
 def create_topic(name: str):
     try:
         crud.create_topic(name)
@@ -44,45 +44,39 @@ def create_topic(name: str):
 
 @app.get("/topics")
 def list_topics():
+    """
+    Endpoint to list all topics
+    :return: list of topics
+    """
     topics = crud.list_topics()
     return {"topics": topics}
 
 
-@app.post("/consumer/register/{topic}")
-async def register_consumer(topic: str):
-    """Returns the size of the queue for a given topic.
-
-    Args:
-        topic (str): The topic name
-
-    Raises:
-        HTTPException: If the topic does not exist
-
-    Returns:{
-            "status": success/failure
-            on success : "consumer_id": id
-            else : "message": error
-        }
+@app.post("/consumer/register")
+def register_consumer(topic: str):
+    """
+    Endpoint to register a consumer for a topic
+    :param topic: the topic to which the consumer wants to subscribe
+    :return: consumer id
     """
 
     cursor = db.cursor()
-    cursor.execute("SELECT * FROM Topic WHERE name = %s", (topic,))
-    # Check if topic exists in topic table
-    if cursor.rowcount is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, message="Topic not found")
+    if not crud.topic_exists(topic, cursor):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
 
-    cursor.execute("SELECT COUNT(*) FROM Queue WHERE topic_name = %s", (topic,))
-    count = cursor.fetchone()[0]
-    return {
-        "status": "success",
-        "consumer_id": count
-    }
+    consumer_id = str(uuid4())
+    crud.register_consumer(consumer_id, topic, cursor)
+    db.commit()
+    return {"consumer_id": consumer_id}
 
 
 @app.post("/producer/register")
-async def register_producer(request: Request):
-    body = await request.json()
-    topic = body["topic"]
+def register_producer(topic: str):
+    """
+    Endpoint to register a producer for a topic
+    :param topic: the topic to which the producer wants to publish
+    :return: producer id
+    """
     try:
         crud.create_topic(topic)
         db.commit()
@@ -95,37 +89,26 @@ async def register_producer(request: Request):
     return {"producer_id": producer_id}
 
 
-@app.get("/consumer/consume/{topic}")
-async def dequeue(topic: str, consumer_id: int):
-    """Returns the size of the queue for a given topic.
-
-    Args:
-        topic (str): The topic name
-        consumer_id (int): id of the current consumer
-
-    Raises:
-        HTTPException: If the topic does not exist 
-
-    Returns:{
-            "status" : success/failure
-            "message" : log message on success/ error on failure
-        }
+@app.get("/consumer/consume")
+def dequeue(topic: str, consumer_id: int):
+    """
+    Endpoint to dequeue a message from the queue
+    :param topic: the topic from which the consumer wants to dequeue
+    :param consumer_id: consumer id obtained while registering
+    :return: log message
     """
 
     cursor = db.cursor()
-    cursor.execute("SELECT pos FROM Consumer_Topic WHERE consumer_id = %d", (consumer_id,))
     # Check if topic exists in topic table
-    if cursor.rowcount is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, message="Topic not found")
+    if crud.topic_exists(topic, cursor) is False:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
+    cursor.execute("SELECT pos FROM Consumer_Topic WHERE consumer_id = %d", (consumer_id,))
     pos = cursor.fetchone()[0]
     cursor.execute("SELECT COUNT(*) FROM Queue WHERE topic_name = %s", (topic,))
     size = cursor.fetchone()[0]
     # check if the topic queue is empty
     if pos == size:
-        return {
-            "status": "failure",
-            "message": "Topic is empty"
-        }
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic is empty")
     try:
         cursor.execute("UPDATE Consumer_Topic SET pos = pos+1 WHERE consumer_id = %d and topic_name = %s",
                        (consumer_id, topic,))
@@ -140,20 +123,20 @@ async def dequeue(topic: str, consumer_id: int):
         FETCH NEXT 1 ROWS ONLY""",
                    (topic, pos,))
     message = cursor.fetchone()[0]
-    return {
-        "status": "success",
-        "message": message
-    }
+    return {"message": message}
 
 
-@app.post("/producer/produce/{topic}")
-async def enqueue(topic: str, request: Request):
+@app.post("/producer/produce")
+def enqueue(topic: str, producer_id: str, message: str):
+    """
+    Endpoint to enqueue a message to the queue
+    :param topic: the topic to which the producer wants to enqueue
+    :param producer_id: producer id obtained while registering
+    :param message: log message to be enqueued
+    """
     if not crud.topic_exists(topic):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
 
-    body = await request.json()
-    message = body["message"]
-    producer_id = body["producer_id"]
     producer_topic = crud.get_producer_topic(producer_id)
     if producer_topic is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producer not found")
@@ -165,20 +148,13 @@ async def enqueue(topic: str, request: Request):
     return
 
 
-@app.get("/size/{topic}")
-async def size(topic: str):
-    """Returns the size of the queue for a given topic.
-
-    Args:
-        topic (str): The topic name
-
-    Raises:
-        HTTPException: If the topic does not exist
-
-    Returns:
-        {
-            "size": _size_
-        }: The size of the queue for the given topic
+@app.get("/size")
+async def size(topic: str, consumer_id: str):
+    """
+    Endpoint to get the size of the queue for a given topic
+    :param topic: the topic for which the size is to be obtained
+    :param consumer_id: consumer id obtained while registering
+    :return: size of the queue
     """
 
     cursor = db.cursor()

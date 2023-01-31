@@ -20,6 +20,12 @@ def register_producer(producer, topic, cursor=None):
     cursor.execute("INSERT INTO Producer_Topic (producer_id, topic_name) VALUES (%s, %s)", (producer, topic))
 
 
+def register_consumer(consumer_id, topic, cursor=None):
+    if cursor is None:
+        cursor = db.cursor()
+    cursor.execute("INSERT INTO Consumer_Topic (consumer_id, topic_name) VALUES (%s, %s)", (consumer_id, topic))
+
+
 def enqueue_message(topic, message, cursor=None):
     if cursor is None:
         cursor = db.cursor()
