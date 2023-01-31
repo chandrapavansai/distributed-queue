@@ -1,6 +1,7 @@
-from fastapi import FastAPI,status,HTTPException
+from fastapi import FastAPI, status, HTTPException
 import time
 from database import db
+
 app = FastAPI()
 
 cursor = db.cursor()
@@ -73,15 +74,12 @@ async def size(topic: str):
         }: The size of the queue for the given topic
     """
 
-    cursor.execute("SELECT COUNT(*) FROM topic WHERE name = %s", (topic,))
+    cursor.execute("SELECT COUNT(*) FROM Topic WHERE name = %s", (topic,))
     # Check if topic exists in topic table
     if cursor.rowcount is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
 
-    cursor.execute("SELECT COUNT(*) FROM queue WHERE topic_name = %s", (topic,))
+    cursor.execute("SELECT COUNT(*) FROM Queue WHERE topic_name = %s", (topic,))
     count = cursor.fetchone()[0]
     print(cursor.fetchone())
     return {"size": count}
-    
-
-
