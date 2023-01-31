@@ -3,6 +3,10 @@ import requests as req
 
 class Producer:
     def __init__(self, topics: list[str], broker: str):
+        # Check if / is present at the end of broker
+        if broker[-1] == '/':
+            broker = broker[:-1] # Remove the last character
+            
         self.broker = broker
         self.topic_prod_ids = dict()
         for topic in topics:
