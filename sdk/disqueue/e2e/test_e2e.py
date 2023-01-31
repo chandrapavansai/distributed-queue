@@ -2,6 +2,7 @@
 
 import os
 import sys
+
 # Add the parent directory to the path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Add disqueue to the path
@@ -17,7 +18,7 @@ PORT = 8000
 
 def run_producer(file_name, topics):
     # Create producer
-    producer = Producer(topics=topics, broker="http://localhost:8000")
+    producer = Producer(topics=topics, broker="http://localhost:8080")
 
     # Read log from filename
     with open(file_name, "r") as f:
@@ -64,6 +65,7 @@ def run_consumer(name,topics):
         if cnt == len(topics):
             break
 
+
 if __name__ == '__main__':
 
     # Kill all threads on ctrl+c
@@ -78,12 +80,15 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, signal_handler)
 
     # Create Producer threads
+
+    print("Starting threads")
     producer_threads = []
-    producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/producer_1.txt", ["T-1", "T-2", "T-3"])))
-    producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/producer_2.txt", ["T-1", "T-3"])))
-    producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/producer_3.txt", ["T-1"])))
-    producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/producer_4.txt", ["T-2"])))
-    producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/producer_5.txt", ["T-2"])))
+    producer_threads.append(
+        threading.Thread(target=run_producer, args=("./test_asgn1/producer_1.txt", ["T-1", "T-2", "T-3"])))
+    # producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/producer_2.txt", ["T-1", "T-3"])))
+    # producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/producer_3.txt", ["T-1"])))
+    # producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/producer_4.txt", ["T-2"])))
+    # producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/producer_5.txt", ["T-2"])))
 
     # Create Consumer thread
     consumer_threads = []
@@ -95,14 +100,14 @@ if __name__ == '__main__':
     # Start threads
     for thread in producer_threads:
         thread.start()
-    
+
     for thread in consumer_threads:
         thread.start()
 
     # Join threads
     for thread in producer_threads:
         thread.join()
-    
+
     for thread in consumer_threads:
         thread.join()
 
