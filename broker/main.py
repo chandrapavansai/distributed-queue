@@ -1,10 +1,13 @@
-from fastapi import FastAPI, status, HTTPException
+import psycopg2
+from fastapi import FastAPI, status, HTTPException, Request
 import time
+
+import crud
 from database import db
+from uuid import uuid4
 
 app = FastAPI()
 
-cursor = db.cursor()
 # Print PostgreSQL details
 print("PostgreSQL server information")
 print(db.get_dsn_parameters(), "\n")
@@ -29,13 +32,20 @@ async def ping():
 #     return {"message": f"Hello {name}"}
 
 @app.post("/topics/{name}")
-async def create_topic(name: str):
-    ...
+def create_topic(name: str):
+    try:
+        crud.create_topic(name)
+    except psycopg2.errors.UniqueViolation:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Topic already exists")
+    db.commit()
+    return {"message": "Topic created successfully"}
 
 
 @app.get("/topics")
-async def list_topics():
-    ...
+def list_topics():
+    topics = crud.list_topics()
+    return {"topics": topics}
 
 
 @app.post("/consumer/register/{topic}")
@@ -67,11 +77,20 @@ async def register_consumer(topic: str):
         "consumer_id": count
     }
 
+@app.post("/producer/register")
+async def register_producer(request: Request):
+    body = await request.json()
+    topic = body["topic"]
+    try:
+        crud.create_topic(topic)
+        db.commit()
+    except psycopg2.errors.UniqueViolation:
+        db.rollback()
 
-@app.post("/producer/register/{topic}")
-async def register_producer(topic: str):
-
-    ...
+    producer_id = str(uuid4())
+    crud.register_producer(producer_id, topic)
+    db.commit()
+    return {"producer_id": producer_id}
 
 
 @app.get("/consumer/consume/{topic}")
@@ -124,8 +143,23 @@ async def dequeue(topic: str, consumer_id: int):
 
 
 @app.post("/producer/produce/{topic}")
-async def enqueue(topic: str):
-    ...
+async def enqueue(topic: str, request: Request):
+
+    if not crud.topic_exists(topic):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
+
+    body = await request.json()
+    message = body["message"]
+    producer_id = body["producer_id"]
+    producer_topic = crud.get_producer_topic(producer_id)
+    if producer_topic is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producer not found")
+    if producer_topic != topic:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Producer not registered for this topic")
+
+    crud.enqueue_message(topic, message)
+    db.commit()
+    return
 
 
 
@@ -145,9 +179,9 @@ async def size(topic: str):
         }: The size of the queue for the given topic
     """
 
-    cursor.execute("SELECT COUNT(*) FROM Topic WHERE name = %s", (topic,))
-    # Check if topic exists in topic table
-    if cursor.rowcount is None:
+    cursor = db.cursor()
+
+    if not crud.topic_exists(topic, cursor):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
 
     cursor.execute("SELECT COUNT(*) FROM Queue WHERE topic_name = %s", (topic,))
