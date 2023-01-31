@@ -91,7 +91,7 @@ def register_producer(topic: str):
 
 
 @app.get("/consumer/consume")
-def dequeue(topic: str, consumer_id: int):
+def dequeue(topic: str, consumer_id: str):
     """
     Endpoint to dequeue a message from the queue
     :param topic: the topic from which the consumer wants to dequeue
@@ -103,7 +103,7 @@ def dequeue(topic: str, consumer_id: int):
     # Check if topic exists in topic table
     if crud.topic_exists(topic, cursor) is False:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
-    cursor.execute("SELECT pos FROM Consumer_Topic WHERE consumer_id = %d", (consumer_id,))
+    cursor.execute("SELECT pos FROM Consumer_Topic WHERE consumer_id = %s", (consumer_id,))
     pos = cursor.fetchone()[0]
     cursor.execute("SELECT COUNT(*) FROM Queue WHERE topic_name = %s", (topic,))
     size = cursor.fetchone()[0]
@@ -111,12 +111,14 @@ def dequeue(topic: str, consumer_id: int):
     if pos == size:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic is empty")
     try:
-        cursor.execute("UPDATE Consumer_Topic SET pos = pos+1 WHERE consumer_id = %d and topic_name = %s",
+        cursor.execute("UPDATE Consumer_Topic SET pos = pos+1 WHERE consumer_id = %s and topic_name = %s",
                        (consumer_id, topic,))
     except:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unable to update the position")
     db.commit()
+
+    print('hello bro', 'size', size)
     cursor.execute("""
         SELECT message 
         FROM (SELECT * FROM Queue WHERE topic_name = %s) 
@@ -124,6 +126,7 @@ def dequeue(topic: str, consumer_id: int):
         FETCH NEXT 1 ROWS ONLY""",
                    (topic, pos,))
     message = cursor.fetchone()[0]
+    print(message)
     return {"message": message}
 
 
@@ -163,6 +166,6 @@ async def size(topic: str, consumer_id: str):
     if not crud.topic_exists(topic, cursor):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
 
-    cursor.execute("SELECT COUNT(*) FROM Consumer_Topic WHERE consumer_id = %d AND topic_name = %s", (consumer_id,topic,))
+    cursor.execute("SELECT COUNT(*) FROM Consumer_Topic WHERE consumer_id = %s AND topic_name = %s", (consumer_id,topic,))
     count = cursor.fetchone()[0]
     return {"size": count}
