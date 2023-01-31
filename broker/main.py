@@ -189,5 +189,4 @@ async def size(topic: str, consumer_id : int):
 
     cursor.execute("SELECT COUNT(*) FROM Consumer_Topic WHERE consumer_id = %d AND topic_name = %s", (consumer_id,topic,))
     count = cursor.fetchone()[0]
-    print(cursor.fetchone())
     return {"size": count}
