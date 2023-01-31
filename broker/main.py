@@ -65,6 +65,7 @@ async def register_consumer(topic: str):
         }
     """
 
+    cursor = db.cursor()
     cursor.execute("SELECT * FROM Topic WHERE name = %s", (topic,))
     # Check if topic exists in topic table
     if cursor.rowcount is None:
@@ -76,6 +77,7 @@ async def register_consumer(topic: str):
         "status": "success",
         "consumer_id": count
     }
+
 
 @app.post("/producer/register")
 async def register_producer(request: Request):
@@ -110,6 +112,7 @@ async def dequeue(topic: str, consumer_id: int):
         }
     """
 
+    cursor = db.cursor()
     cursor.execute("SELECT pos FROM Consumer_Topic WHERE consumer_id = %d", (consumer_id,))
     # Check if topic exists in topic table
     if cursor.rowcount is None:
@@ -124,17 +127,18 @@ async def dequeue(topic: str, consumer_id: int):
             "message": "Topic is empty"
         }
     try:
-        cursor.execute("UPDATE Consumer_Topic SET pos = pos+1 WHERE consumer_id = %d and topic_name = %s",(consumer_id,topic,))
+        cursor.execute("UPDATE Consumer_Topic SET pos = pos+1 WHERE consumer_id = %d and topic_name = %s",
+                       (consumer_id, topic,))
     except:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR , detail="Unable to update the position")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unable to update the position")
     db.commit()
     cursor.execute("""
         SELECT message 
         FROM (SELECT * FROM Queue WHERE topic_name = %s) 
         OFFSET %d ROWS 
-        FETCH NEXT 1 ROWS ONLY""", 
-    (topic,pos,))
+        FETCH NEXT 1 ROWS ONLY""",
+                   (topic, pos,))
     message = cursor.fetchone()[0]
     return {
         "status": "success",
@@ -144,7 +148,6 @@ async def dequeue(topic: str, consumer_id: int):
 
 @app.post("/producer/produce/{topic}")
 async def enqueue(topic: str, request: Request):
-
     if not crud.topic_exists(topic):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
 
@@ -160,7 +163,6 @@ async def enqueue(topic: str, request: Request):
     crud.enqueue_message(topic, message)
     db.commit()
     return
-
 
 
 @app.get("/size/{topic}")
