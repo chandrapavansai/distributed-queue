@@ -13,6 +13,8 @@ import threading
 import random
 import time
 
+PORT = 8000
+
 def run_producer(file_name, topics):
     # Create producer
     producer = Producer(topics=topics, broker="http://localhost:8000")
@@ -22,8 +24,8 @@ def run_producer(file_name, topics):
         log = f.read()
         for line in log.splitlines():
             # Extract info
-            message = line.split(" ")[1]
-            topic = line.split(" ")[-1]
+            message = line.split("\t")[1]
+            topic = line.split("\t")[-1]
 
             # Send message
             print("P " + file_name[-5])
@@ -37,18 +39,44 @@ def run_producer(file_name, topics):
 def run_consumer(name,topics):
     # Create consumer
     consumer = Consumer(topics=topics, broker="http://localhost:8000")
+    kill = False
+    # Kill thread after 10 seconds
+    def kill_thread():
+        # Kill thread
+        global kill
+        kill = True
+        print("Killing thread")
+    threading.Timer(1, kill_thread).start()
 
     # Consume messages
-    while True:
+    while not kill:
+        cnt = 0
         for topic in topics:
+            if not consumer.get_size(topic=topic):
+                cnt = cnt + 1
+                continue
             print("C " + name)
             try:
                 message = consumer.get_next(topic=topic)
                 print(f"\tConsuming message from topic {topic} : {message}")
             except Exception as e:
                 print(e)
+        if cnt == len(topics):
+            break
 
 if __name__ == '__main__':
+
+    # Kill all threads on ctrl+c
+    def signal_handler(sig, frame):
+        print("Killing all threads")
+        for thread in threading.enumerate():
+            if thread != threading.main_thread():
+                thread.kill()
+        sys.exit(0)
+    
+    import signal
+    signal.signal(signal.SIGINT, signal_handler)
+
     # Create Producer threads
     producer_threads = []
     producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/producer_1.txt", ["T-1", "T-2", "T-3"])))
@@ -64,8 +92,6 @@ if __name__ == '__main__':
     consumer_threads.append(threading.Thread(target=run_consumer, args=('3',["T-1", "T-3"])))
     
 
-
-
     # Start threads
     for thread in producer_threads:
         thread.start()
@@ -79,6 +105,7 @@ if __name__ == '__main__':
     
     for thread in consumer_threads:
         thread.join()
+
 
     
     
