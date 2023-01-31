@@ -66,3 +66,9 @@ Password: admin
 ###### To create container with volumes
 
 `docker run --name ds-assgn-1-container -p 80:80 -d -v $(pwd):/code ds-assgn-1-image`
+
+##### Testing
+
+###### Unit testing Client Library 
+
+`cd sdk/disqueue; python -m unittest -v`
