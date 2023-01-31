@@ -166,11 +166,12 @@ async def enqueue(topic: str, request: Request):
 
 
 @app.get("/size/{topic}")
-async def size(topic: str):
+async def size(topic: str, consumer_id : int):
     """Returns the size of the queue for a given topic.
 
     Args:
         topic (str): The topic name
+        consumer_id (int) : consumer's id
 
     Raises:
         HTTPException: If the topic does not exist
@@ -186,7 +187,6 @@ async def size(topic: str):
     if not crud.topic_exists(topic, cursor):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
 
-    cursor.execute("SELECT COUNT(*) FROM Queue WHERE topic_name = %s", (topic,))
+    cursor.execute("SELECT COUNT(*) FROM Consumer_Topic WHERE consumer_id = %d AND topic_name = %s", (consumer_id,topic,))
     count = cursor.fetchone()[0]
-    print(cursor.fetchone())
     return {"size": count}
