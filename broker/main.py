@@ -28,19 +28,19 @@ async def ping():
 
 
 @app.post("/topics")
-def create_topic(topic_name: str):
+def create_topic(name: str):
     """
     Endpoint to create a topic
-    :param topic_name: name of the topic
+    :param name: name of the topic
     :return: success message
     """
     try:
-        crud.create_topic(topic_name)
+        crud.create_topic(name)
+        db.commit()
     except psycopg2.errors.UniqueViolation:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Topic already exists")
-    db.commit()
-    return {"detail": f"Topic {topic_name} created successfully"}
+    return {"detail": f"Topic {name} created successfully"}
 
 
 @app.get("/topics")
