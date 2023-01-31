@@ -1,6 +1,7 @@
-from fastapi import FastAPI,status,HTTPException
+from fastapi import FastAPI, status, HTTPException
 import time
 from database import db
+
 app = FastAPI()
 
 cursor = db.cursor()
@@ -20,12 +21,8 @@ async def add_process_time_header(request, call_next):
 
 @app.get("/ping")
 async def ping():
-    return {"message": "pong1"}
+    return {"message": "pong"}
 
-
-# @app.get("/hello/{name}")
-# async def say_hello(name: str):
-#     return {"message": f"Hello {name}"}
 
 @app.post("/topics/{name}")
 async def create_topic(name: str):
@@ -58,7 +55,7 @@ async def dequeue(topic: str):
 
 
 @app.get("/size/{topic}")
-async def size(topic: str):
+def size(topic: str):
     """Returns the size of the queue for a given topic.
 
     Args:
@@ -72,16 +69,12 @@ async def size(topic: str):
             "size": _size_
         }: The size of the queue for the given topic
     """
-
-    cursor.execute("SELECT COUNT(*) FROM topic WHERE name = %s", (topic,))
+    cursor.execute("SELECT COUNT(*) FROM Topic WHERE name = %s", (topic,))
     # Check if topic exists in topic table
-    if cursor.rowcount is None:
+    if cursor.rowcount == 0:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
 
-    cursor.execute("SELECT COUNT(*) FROM queue WHERE topic_name = %s", (topic,))
+    cursor.execute("SELECT COUNT(*) FROM Queue WHERE topic_name = %s", (topic,))
     count = cursor.fetchone()[0]
     print(cursor.fetchone())
     return {"size": count}
-    
-
-
