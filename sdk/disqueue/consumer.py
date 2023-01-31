@@ -32,7 +32,6 @@ class Consumer:
         if not res.ok:
             raise Exception(message=res.json()['detail'])
         self.topic_cons_ids[topic] = res.json()['consumer_id']
-        print(res.json())
 
     def get_next(self, topic: str) -> str:
         """
@@ -50,7 +49,6 @@ class Consumer:
                              'consumer_id': self.topic_cons_ids[topic]})
         if not res.ok:
             raise Exception(message=res.json()['detail'])
-        print(res.json())
         return res.json()['message']
     
     def get_size(self, topic: str) -> int:
@@ -58,7 +56,7 @@ class Consumer:
 
         Args:
             topic (str): topic to be consumed
-            
+
         Raises:
             Exception: If the response is not ok
 
@@ -70,5 +68,4 @@ class Consumer:
                              'consumer_id': self.topic_cons_ids[topic]})
         if not res.ok:
             raise Exception(message=res.json()['detail'])
-        print(res.json())
         return res.json()['size']

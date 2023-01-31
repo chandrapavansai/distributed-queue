@@ -30,13 +30,11 @@ class Producer:
         Returns:
             int: producer_id
         """
-        print(self.broker + '/producer/register')
         res = req.post(self.broker + '/producer/register',
                        params={'topic': topic})
         if not res.ok:
             raise Exception(message=res.json()['detail'])
         self.topic_prod_ids[topic] = res.json()['producer_id']
-        print(res.json())
 
     def send_message(self, topic: str, message: str):
         """Function to send a message to a topic
@@ -59,4 +57,3 @@ class Producer:
                        )
         if not res.ok:
             raise Exception(message=res.json()['edtail'])
-        print(res.json())
