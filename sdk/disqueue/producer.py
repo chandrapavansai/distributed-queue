@@ -30,6 +30,7 @@ class Producer:
         Returns:
             int: producer_id
         """
+        print(self.broker + '/producer/register')
         res = req.post(self.broker + '/producer/register',
                        params={'topic': topic})
         if not res.ok:

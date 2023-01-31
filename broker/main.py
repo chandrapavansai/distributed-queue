@@ -111,8 +111,8 @@ def dequeue(topic: str, consumer_id: str):
     if pos == size:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic is empty")
     try:
-        cursor.execute("UPDATE Consumer_Topic SET pos = pos+1 WHERE consumer_id = %s and topic_name = %s",
-                       (consumer_id, topic,))
+        cursor.execute("UPDATE Consumer_Topic SET pos = pos+1 WHERE consumer_id = %s",
+                       (consumer_id,))
     except:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unable to update the position")
