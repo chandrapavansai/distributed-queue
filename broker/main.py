@@ -6,6 +6,7 @@ import crud
 from database import db
 from uuid import uuid4
 
+
 app = FastAPI()
 
 # Print PostgreSQL details
@@ -34,12 +35,19 @@ def create_topic(name: str):
     :param name: name of the topic
     :return: success message
     """
-    try:
-        crud.create_topic(name)
-        db.commit()
-    except psycopg2.errors.UniqueViolation:
-        db.rollback()
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Topic already exists")
+
+    cursor = db.cursor()
+    cursor.execute("""
+        DO $$
+        DECLARE
+            z integer := 0;
+        BEGIN
+        IF ((SELECT COUNT(*) FROM Topic WHERE name = %s) = z) THEN
+            INSERT INTO Topic (name) VALUES (%s);
+        END IF;
+        END $$;
+    """, (name, name))
+    db.commit()
     return {"detail": f"Topic {name} created successfully"}
 
 
@@ -60,7 +68,7 @@ def register_consumer(topic: str):
     :param topic: the topic to which the consumer wants to subscribe
     :return: consumer id
     """
-
+    
     cursor = db.cursor()
     if not crud.topic_exists(topic, cursor):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
@@ -78,15 +86,34 @@ def register_producer(topic: str):
     :param topic: the topic to which the producer wants to publish
     :return: producer id
     """
-    try:
-        crud.create_topic(topic)
-        db.commit()
-    except psycopg2.errors.UniqueViolation:
-        db.rollback()
+    cursor = db.cursor()
 
+
+    # try:
+    #     crud.create_topic(topic,cursor)
+    #     db.commit()
+    # except psycopg2.errors.UniqueViolation:
+    #     db.rollback()
+
+    # producer_id = str(uuid4())
+    # crud.register_producer(producer_id, topic,cursor)
+    # db.commit()
+    # Lock topic Table
+    # If topic exists, then exit otherwise create topic and register producer
     producer_id = str(uuid4())
-    crud.register_producer(producer_id, topic)
-    db.commit()
+    cursor.execute("""
+    DO $$
+    DECLARE
+    z integer := 0;
+    BEGIN
+    LOCK TABLE Topic IN ACCESS SHARE MODE;
+    IF ((SELECT COUNT(*) FROM Topic WHERE name = %s) = z) THEN
+        INSERT INTO Topic (name) VALUES (%s);
+    END IF;
+        INSERT INTO Producer_Topic(producer_id, topic_name) VALUES (%s, %s);
+    END $$;
+    """, (topic, topic, producer_id, topic,))
+    
     return {"producer_id": producer_id}
 
 
@@ -98,35 +125,56 @@ def dequeue(topic: str, consumer_id: str):
     :param consumer_id: consumer id obtained while registering
     :return: log message
     """
-
     cursor = db.cursor()
+    
+
     # Check if topic exists in topic table
     if crud.topic_exists(topic, cursor) is False:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
-    cursor.execute("SELECT pos FROM Consumer_Topic WHERE consumer_id = %s", (consumer_id,))
-    pos = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM Queue WHERE topic_name = %s", (topic,))
-    size = cursor.fetchone()[0]
-    # check if the topic queue is empty
-    if pos == size:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic is empty")
-    try:
-        cursor.execute("UPDATE Consumer_Topic SET pos = pos+1 WHERE consumer_id = %s and topic_name = %s",
-                       (consumer_id, topic,))
-    except:
-        db.rollback()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unable to update the position")
+        # Return result from inside of the transaction
+
+    # Create function
+    cursor.execute("""
+    CREATE OR REPLACE FUNCTION dequeue(topic text, c_id text) RETURNS text AS $$
+    DECLARE
+        mess text;
+    BEGIN
+        LOCK TABLE Queue IN ROW EXCLUSIVE MODE;
+        SELECT message INTO mess FROM Queue WHERE topic_name = topic FOR UPDATE;
+        UPDATE Consumer_Topic SET pos = pos+1 WHERE consumer_id = c_id and topic_name = topic;
+        RETURN mess;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+    # Call function
+    cursor.execute("SELECT dequeue(%s, %s)", (topic, consumer_id,))
+    
     db.commit()
+    # pos = cursor.fetchone()[0]
+    # cursor.execute("SELECT COUNT(*) FROM Queue WHERE topic_name = %s", (topic,))
+    # size = cursor.fetchone()[0]
+    # # check if the topic queue is empty
+    # if pos == size:
+    #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic is empty")
+    # try:
+    #     cursor.execute("UPDATE Consumer_Topic SET pos = pos+1 WHERE consumer_id = %s and topic_name = %s",
+    #                    (consumer_id, topic,))
+    # except:
+    #     db.rollback()
+    #     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unable to update the position")
+    # db.commit()
 
     print('hello bro', 'size', size)
-    cursor.execute("""
-        SELECT message 
-        FROM (SELECT * FROM Queue WHERE topic_name = %s) 
-        OFFSET %d ROWS 
-        FETCH NEXT 1 ROWS ONLY""",
-                   (topic, pos,))
+    # cursor.execute("""
+    #     SELECT message 
+    #     FROM (SELECT * FROM Queue WHERE topic_name = %s) 
+    #     OFFSET %d ROWS 
+    #     FETCH NEXT 1 ROWS ONLY""",
+    #                (topic, pos,))
     message = cursor.fetchone()[0]
     print(message)
+
     return {"message": message}
 
 
@@ -168,4 +216,9 @@ async def size(topic: str, consumer_id: str):
 
     cursor.execute("SELECT COUNT(*) FROM Consumer_Topic WHERE consumer_id = %s AND topic_name = %s", (consumer_id,topic,))
     count = cursor.fetchone()[0]
-    return {"size": count}
+    # Get position of consumer
+    cursor.execute("SELECT pos FROM Consumer_Topic WHERE consumer_id = %s AND topic_name = %s", (consumer_id, topic,))
+    pos = cursor.fetchone()[0]
+    # Get size of queue
+    
+    return {"size": count - pos}
