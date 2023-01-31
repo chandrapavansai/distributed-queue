@@ -5,8 +5,8 @@ class Producer:
     def __init__(self, topics: list[str], broker: str):
         # Check if / is present at the end of broker
         if broker[-1] == '/':
-            broker = broker[:-1] # Remove the last character
-            
+            broker = broker[:-1]  # Remove the last character
+
         self.broker = broker
         self.topic_prod_ids = dict()
         for topic in topics:
@@ -16,7 +16,7 @@ class Producer:
         res = req.post(self.broker + '/producer/register',
                        json={'topic': topic})
         if not res.ok:
-            raise Exception(message=res.json().message)
+            raise Exception(message=res.json()['detail'])
         self.topic_prod_ids[topic] = res.json()['producer_id']
         print(res.json())
 
@@ -30,6 +30,6 @@ class Producer:
                              }
                        )
         if not res.ok:
-            raise Exception(message=res.json()['message'])
+            raise Exception(message=res.json()['edtail'])
         print(res.json())
     ...

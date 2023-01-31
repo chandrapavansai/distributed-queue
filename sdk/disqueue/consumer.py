@@ -16,7 +16,7 @@ class Consumer:
         res = req.post(self.broker + '/consumer/register',
                        json={'topic': topic})
         if not res.ok:
-            raise Exception(message=res.json().message)
+            raise Exception(message=res.json()['detail'])
         self.topic_cons_ids[topic] = res.json()['consumer_id']
         print(res.json())
 
@@ -25,15 +25,15 @@ class Consumer:
                        json={'topic': topic,
                              'consumer_id': self.topic_cons_ids[topic]})
         if not res.ok:
-            raise Exception(message=res.json().message)
+            raise Exception(message=res.json()['detail'])
         print(res.json())
-        return res.json().message
+        return res.json()['message']
     
     def get_size(self, topic: str) -> int:
         res = req.get(self.broker + '/size',
                        json={'topic': topic,
                              'consumer_id': self.topic_cons_ids[topic]})
         if not res.ok:
-            raise Exception(message=res.json().message)
+            raise Exception(message=res.json()['detail'])
         print(res.json())
-        return res.json().size
+        return res.json()['size']
