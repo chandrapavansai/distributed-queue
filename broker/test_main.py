@@ -220,3 +220,46 @@ def test_consume_multiple_messages():
         assert response.status_code == 200
         # print("message", message)
         assert response.json() == {"message": str(message)}
+
+
+def test_consume_multiple_consumers_multiple_producers():
+    clear_db()
+    client.post("/topics", params={"name": "test"})
+    producer_id = client.post("/producer/register", params={"topic": "test"}).json()["producer_id"]
+    producer_id_1 = client.post("/producer/register", params={"topic": "test"}).json()["producer_id"]
+
+    for message in range(10):
+        client.post("/producer/produce",
+                    params={"topic": "test", "producer_id": producer_id, "message": str(message)})
+        client.post("/producer/produce",
+                    params={"topic": "test", "producer_id": producer_id_1, "message": str(message)})
+    consumer_id = client.post("/consumer/register", params={"topic": "test"}).json()["consumer_id"]
+    for message in range(10):
+        response = client.get("/consumer/consume",
+                              params={"topic": "test", "consumer_id": consumer_id})
+        assert response.status_code == 200
+        assert response.json() == {"message": str(message)}
+        response = client.get("/consumer/consume",
+                              params={"topic": "test", "consumer_id": consumer_id})
+        assert response.status_code == 200
+        assert response.json() == {"message": str(message)}
+
+
+def test_consume_multiple_consumers_multiple_topics():
+    clear_db()
+    client.post("/topics", params={"name": "test"})
+    client.post("/topics", params={"name": "test1"})
+    producer_id = client.post("/producer/register", params={"topic": "test"}).json()["producer_id"]
+    producer_id_1 = client.post("/producer/register", params={"topic": "test1"}).json()["producer_id"]
+
+    for message in range(10):
+        client.post("/producer/produce",
+                    params={"topic": "test", "producer_id": producer_id, "message": str(message)})
+        client.post("/producer/produce",
+                    params={"topic": "test1", "producer_id": producer_id_1, "message": str(message)})
+    consumer_id = client.post("/consumer/register", params={"topic": "test"}).json()["consumer_id"]
+    for message in range(10):
+        response = client.get("/consumer/consume",
+                              params={"topic": "test", "consumer_id": consumer_id})
+        assert response.status_code == 200
+        assert response.json() == {"message": str(message)}
