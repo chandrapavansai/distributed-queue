@@ -39,7 +39,7 @@ def run_producer(file_name, topics):
 
 def run_consumer(name,topics):
     # Create consumer
-    consumer = Consumer(topics=topics, broker="http://localhost:8000")
+    consumer = Consumer(topics=topics, broker="http://localhost:8080")
     kill = False
     # Kill thread after 10 seconds
     def kill_thread():

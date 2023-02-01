@@ -8,5 +8,5 @@
 env/
 
 # Ignore broker/db-data folder
-broker/db-data/
+db-data/
 

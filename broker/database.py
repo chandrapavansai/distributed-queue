@@ -10,7 +10,7 @@ import psycopg2
 
 DATABASE_NAME = os.getenv('DB_NAME') if os.getenv('DB_NAME') is not None else 'ds-assgn-1'
 USER = os.getenv('DB_USER') if os.getenv('DB_USER') is not None else 'postgres'
-PASSWORD = os.getenv('DB_PASSWORD') if os.getenv('DB_PASSWORD') is not None else '1234'
+PASSWORD = os.getenv('DB_PASSWORD') if os.getenv('DB_PASSWORD') is not None else 'postgres'
 HOST = os.getenv('DB_HOST') if os.getenv('DB_HOST') is not None else 'localhost'
 PORT = os.getenv('DB_PORT') if os.getenv('DB_PORT') is not None else '5432'
 
@@ -20,5 +20,20 @@ db = psycopg2.connect(database=DATABASE_NAME,
                       password=PASSWORD,
                       port=PORT)
 
-with db.cursor() as cursor:
-    cursor.execute(open("database.sql", "r").read())
+
+def init_db():
+    with db.cursor() as cursor:
+        cursor.execute(open("database.sql", "r").read())
+        db.commit()
+
+
+def clear_db():
+    with db.cursor() as cursor:
+        cursor.execute("DELETE FROM Queue")
+        cursor.execute("DELETE FROM Consumer_Topic")
+        cursor.execute("DELETE FROM Producer_Topic")
+        cursor.execute("DELETE FROM Topic")
+        db.commit()
+
+
+init_db()

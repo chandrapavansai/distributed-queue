@@ -72,3 +72,7 @@ Password: admin
 ###### Unit testing Client Library 
 
 `cd sdk/disqueue; python -m unittest -v`
+
+###### End to End Testing
+
+`cd sdk/disqueue/e2e; python ./test_e2e.py`

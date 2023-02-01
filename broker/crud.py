@@ -40,8 +40,30 @@ def get_producer_topic(producer_id, cursor=None):
     return None if output is None else output[0]
 
 
+def get_consumer_topic(consumer_id, cursor=None):
+    if cursor is None:
+        cursor = db.cursor()
+    cursor.execute("SELECT topic_name FROM Consumer_Topic WHERE consumer_id = %s", (consumer_id,))
+    output = cursor.fetchone()
+    return None if output is None else output[0]
+
+
 def topic_exists(topic, cursor=None):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute("SELECT COUNT(*) FROM Topic WHERE name = %s", (topic,))
+    return cursor.fetchone()[0] > 0
+
+
+def consumer_exists(consumer_id, cursor=None):
+    if cursor is None:
+        cursor = db.cursor()
+    cursor.execute("SELECT COUNT(*) FROM Consumer_Topic WHERE consumer_id = %s", (consumer_id,))
+    return cursor.fetchone()[0] > 0
+
+
+def producer_exists(producer_id, cursor=None):
+    if cursor is None:
+        cursor = db.cursor()
+    cursor.execute("SELECT COUNT(*) FROM Producer_Topic WHERE producer_id = %s", (producer_id,))
     return cursor.fetchone()[0] > 0

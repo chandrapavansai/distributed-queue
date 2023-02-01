@@ -6,7 +6,6 @@ import crud
 from database import db
 from uuid import uuid4
 
-
 app = FastAPI()
 
 # Print PostgreSQL details
@@ -37,6 +36,10 @@ def create_topic(name: str):
     """
 
     cursor = db.cursor()
+    if crud.topic_exists(name, cursor):
+        raise HTTPException(status_code=status.HTTP_407_PROXY_AUTHENTICATION_REQUIRED,
+                            detail="Topic already exists")
+
     cursor.execute("""
         DO $$
         DECLARE
@@ -68,7 +71,7 @@ def register_consumer(topic: str):
     :param topic: the topic to which the consumer wants to subscribe
     :return: consumer id
     """
-    
+
     cursor = db.cursor()
     if not crud.topic_exists(topic, cursor):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
@@ -87,7 +90,6 @@ def register_producer(topic: str):
     :return: producer id
     """
     cursor = db.cursor()
-
 
     # try:
     #     crud.create_topic(topic,cursor)
@@ -113,7 +115,7 @@ def register_producer(topic: str):
         INSERT INTO Producer_Topic(producer_id, topic_name) VALUES (%s, %s);
     END $$;
     """, (topic, topic, producer_id, topic,))
-    
+
     return {"producer_id": producer_id}
 
 
@@ -126,13 +128,18 @@ def dequeue(topic: str, consumer_id: str):
     :return: log message
     """
     cursor = db.cursor()
-    
 
     # Check if topic exists in topic table
-    if crud.topic_exists(topic, cursor) is False:
+    if not crud.topic_exists(topic, cursor):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
-        # Return result from inside of the transaction
 
+    consumer_topic = crud.get_consumer_topic(consumer_id, cursor)
+    if consumer_topic is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Consumer not found")
+    elif consumer_topic != topic:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Consumer not registered for this topic")
+
+    # Return result from inside the transaction
     # Create function
     cursor.execute("""
     CREATE OR REPLACE FUNCTION dequeue(topic text, c_id text) RETURNS text AS $$
@@ -149,7 +156,7 @@ def dequeue(topic: str, consumer_id: str):
 
     # Call function
     cursor.execute("SELECT dequeue(%s, %s)", (topic, consumer_id,))
-    
+
     db.commit()
     # pos = cursor.fetchone()[0]
     # cursor.execute("SELECT COUNT(*) FROM Queue WHERE topic_name = %s", (topic,))
@@ -165,15 +172,16 @@ def dequeue(topic: str, consumer_id: str):
     #     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unable to update the position")
     # db.commit()
 
-    print('hello bro', 'size', size)
     # cursor.execute("""
     #     SELECT message 
     #     FROM (SELECT * FROM Queue WHERE topic_name = %s) 
     #     OFFSET %d ROWS 
     #     FETCH NEXT 1 ROWS ONLY""",
     #                (topic, pos,))
+
     message = cursor.fetchone()[0]
-    print(message)
+    if message is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Queue is empty")
 
     return {"message": message}
 
@@ -214,11 +222,12 @@ async def size(topic: str, consumer_id: str):
     if not crud.topic_exists(topic, cursor):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
 
-    cursor.execute("SELECT COUNT(*) FROM Consumer_Topic WHERE consumer_id = %s AND topic_name = %s", (consumer_id,topic,))
+    cursor.execute("SELECT COUNT(*) FROM Consumer_Topic WHERE consumer_id = %s AND topic_name = %s",
+                   (consumer_id, topic,))
     count = cursor.fetchone()[0]
     # Get position of consumer
     cursor.execute("SELECT pos FROM Consumer_Topic WHERE consumer_id = %s AND topic_name = %s", (consumer_id, topic,))
     pos = cursor.fetchone()[0]
     # Get size of queue
-    
+
     return {"size": count - pos}
