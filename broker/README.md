@@ -41,7 +41,7 @@
   ```
   
 ## Testing
-+ Create seperate databse for testing
++ Create seperate database for testing
 + Run the tests with correct environment variables
 ```sh
 python3 -m pytest test_main.py
