@@ -60,6 +60,9 @@ Queue : index (sorted according to this to maintain the FIFO order), message (lo
 We do not need a Topic table, as we could get all the listed topics by querying on the Producer_Topic but we used extra tables to make sure the queries are processed faster as the Producer_Topic table would typically be much larger than the Topic file.
 
 ## Testing
+### API testing
+
+Extensively tested all the endpoints cases of success and failure.
 
 ### Client library
 
