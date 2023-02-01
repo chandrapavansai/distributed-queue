@@ -7,7 +7,7 @@ This repo is home for our submissions for the monthly assignements of the course
 
 - [/assignments](/assignments) - Problem statements for the monthly assignments
 - [/boker](/broker) - Server for the broker service for the logging queue, which is dockerized
-- [/sdk](/sdk) - Client library to use the logging queue service 
+- [/sdk](/sdk) - Contains Python client library - [disqueue](/sdk/disqueue) to use the logging queue service 
 
 ## Server Setup
 
