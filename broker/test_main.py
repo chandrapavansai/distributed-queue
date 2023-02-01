@@ -139,10 +139,10 @@ def test_produce_wrong_topic():
 
 def test_size():
     clear_db()
-    client.post("/producer/register", params={"topic": "test"})
+    producer_id = client.post("/producer/register", params={"topic": "test"}).json()["producer_id"]
     for message in range(10):
         client.post("/producer/produce",
-                    params={"topic": "test", "producer_id": "test", "message": str(message)})
+                    params={"topic": "test", "producer_id": producer_id, "message": str(message)})
     consumer_id = client.post("/consumer/register", params={"topic": "test"}).json()["consumer_id"]
     response = client.get("/size", params={"topic": "test", "consumer_id": consumer_id})
     assert response.status_code == 200
