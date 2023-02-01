@@ -17,7 +17,7 @@ import time
 # Global variables
 prodExited = 0
 
-PORT = "8000"
+PORT = "8080"
 
 def run_producer(file_name, topics):
     prefix = "P-" + file_name[-5]
