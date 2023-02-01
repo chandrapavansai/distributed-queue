@@ -1,78 +1,44 @@
 # Distributed Queue
 
-### Assignment 1 : Implementing a Distributed Queue
+This repo is home for our submissions for the monthly assignements of the course [CS60002 - Distributed Systems](https://cse.iitkgp.ac.in/~sandipc/courses/cs60002/cs60002.html)
 
-Deadline : 31st Jan
 
-#### To connect to database
+## Files
 
-* Install PostgresSQL
-* Connect to server
-* Import database
+- [/assignments](/assignments) - Problem statements for the monthly assignments
+- [/boker](/broker) - Server for the broker service for the logging queue, which is dockerized
+- [/sdk](/sdk) - Client library to use the logging queue service 
 
-###### To dump
+## Server Setup
 
-`pg_dump -U USERNAME DATABASE_NAME > dbexport.pgsql`
+### With docker compose
 
-###### To Import
+#### Prerequisites
+Docker, Docker Compose
 
-`psql DB_NAME < INPUT_FILE`
+From the root of the cloned repo run `docker compose up` or `docker-compose up` to start the server.
 
-### Docker Container
+### Alternatives
+Checkout [/broker/README.md](/broker/README.md)
 
-#### Start Container
 
-`docker-compose up`
+## Testing
 
-#### Remove Container
+### API testing
 
-`docker-compose down`
+[Testing in broker](/broker/README.md#testing)
 
-#### Postgres Admin Panel
+### Unit testing the client library 
 
-http://localhost:5050/
+```sh
+cd sdk/disqueue
+python3 -m unittest -v
+```
 
-Email: admin@email.com
+### End to End Testing
 
-Password: admin
+```sh
+cd sdk/disqueue/e2e
+python3 ./test_e2e.py
+````
 
-#### Steps
-
-* Login to admin panel
-* Create new server
-  * username: postgres
-  * password: postgres
-* Goto Query Tools
-  * Paste database.sql and run to create database with required tables
-
-##### Docker Helper commands
-
-###### Build image
-
-`docker build -t ds-assgn-1-image .`
-
-###### List all Images
-
-`docker ps`
-
-###### Stop Container
-
-`docker stop ds-assgn-1-container`
-
-###### Remove container
-
-`docker rm ds-assgn-1-container`
-
-###### To create container with volumes
-
-`docker run --name ds-assgn-1-container -p 80:80 -d -v $(pwd):/code ds-assgn-1-image`
-
-##### Testing
-
-###### Unit testing Client Library 
-
-`cd sdk/disqueue; python -m unittest -v`
-
-###### End to End Testing
-
-`cd sdk/disqueue/e2e; python ./test_e2e.py`
