@@ -6,7 +6,6 @@ import crud
 from database import db
 from uuid import uuid4
 
-
 app = FastAPI()
 
 # Print PostgreSQL details
@@ -68,7 +67,7 @@ def register_consumer(topic: str):
     :param topic: the topic to which the consumer wants to subscribe
     :return: consumer id
     """
-    
+
     cursor = db.cursor()
     if not crud.topic_exists(topic, cursor):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
@@ -87,7 +86,6 @@ def register_producer(topic: str):
     :return: producer id
     """
     cursor = db.cursor()
-
 
     # try:
     #     crud.create_topic(topic,cursor)
@@ -113,7 +111,7 @@ def register_producer(topic: str):
         INSERT INTO Producer_Topic(producer_id, topic_name) VALUES (%s, %s);
     END $$;
     """, (topic, topic, producer_id, topic,))
-    
+
     return {"producer_id": producer_id}
 
 
@@ -126,7 +124,6 @@ def dequeue(topic: str, consumer_id: str):
     :return: log message
     """
     cursor = db.cursor()
-    
 
     # Check if topic exists in topic table
     if crud.topic_exists(topic, cursor) is False:
@@ -149,7 +146,7 @@ def dequeue(topic: str, consumer_id: str):
 
     # Call function
     cursor.execute("SELECT dequeue(%s, %s)", (topic, consumer_id,))
-    
+
     db.commit()
     # pos = cursor.fetchone()[0]
     # cursor.execute("SELECT COUNT(*) FROM Queue WHERE topic_name = %s", (topic,))
@@ -214,11 +211,12 @@ async def size(topic: str, consumer_id: str):
     if not crud.topic_exists(topic, cursor):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
 
-    cursor.execute("SELECT COUNT(*) FROM Consumer_Topic WHERE consumer_id = %s AND topic_name = %s", (consumer_id,topic,))
+    cursor.execute("SELECT COUNT(*) FROM Consumer_Topic WHERE consumer_id = %s AND topic_name = %s",
+                   (consumer_id, topic,))
     count = cursor.fetchone()[0]
     # Get position of consumer
     cursor.execute("SELECT pos FROM Consumer_Topic WHERE consumer_id = %s AND topic_name = %s", (consumer_id, topic,))
     pos = cursor.fetchone()[0]
     # Get size of queue
-    
+
     return {"size": count - pos}

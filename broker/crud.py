@@ -45,3 +45,4 @@ def topic_exists(topic, cursor=None):
         cursor = db.cursor()
     cursor.execute("SELECT COUNT(*) FROM Topic WHERE name = %s", (topic,))
     return cursor.fetchone()[0] > 0
+
