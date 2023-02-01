@@ -28,11 +28,11 @@ def run_producer(file_name, topics):
     # Read log from filename
     with open(file_name, "r") as f:
         log = f.read()
-        for line in log.splitlines():
+        for line_no, line in enumerate(log.splitlines()):
             message_sent = False
             while not message_sent:
             # Extract info
-                message = line.split("\t")[1]
+                message = line.split("\t")[1]  + '_' + str(line_no) + '_' + prefix
                 topic = line.split("\t")[-1]
 
                 # Send message
@@ -82,19 +82,21 @@ def run_consumer(name,topics):
 
 if __name__ == '__main__':
 
-
+    test_folder = "./test_asgn1"
+    if len(sys.argv) >= 2:
+        test_folder = sys.argv[1]
     # Create Producer threads
 
     print("Starting threads")
     producer_threads = []
     producer_threads.append(
-        threading.Thread(target=run_producer, args=("./test_asgn1/producer_1.txt", ["T-1", "T-2", "T-3"])))
-    producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/producer_2.txt", ["T-1", "T-3"])))
-    producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/producer_3.txt", ["T-1"])))
-    producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/producer_4.txt", ["T-2"])))
-    producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/producer_5.txt", ["T-2"])))
+        threading.Thread(target=run_producer, args=(f"{test_folder}/producer_1.txt", ["T-1", "T-2", "T-3"])))
+    producer_threads.append(threading.Thread(target=run_producer, args=(f"{test_folder}/producer_2.txt", ["T-1", "T-3"])))
+    producer_threads.append(threading.Thread(target=run_producer, args=(f"{test_folder}/producer_3.txt", ["T-1"])))
+    producer_threads.append(threading.Thread(target=run_producer, args=(f"{test_folder}/producer_4.txt", ["T-2"])))
+    producer_threads.append(threading.Thread(target=run_producer, args=(f"{test_folder}/producer_5.txt", ["T-2"])))
 
-    # producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/test.txt", ["T-2"])))
+    # producer_threads.append(threading.Thread(target=run_producer, args=(f"{test_folder}/test.txt", ["T-2"])))
 
 
     # Create Consumer thread
