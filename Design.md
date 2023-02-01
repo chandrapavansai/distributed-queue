@@ -1,3 +1,8 @@
+## Tech Stack
++ **FastAPI** is a modern, fast (high-performance) web framework for building APIs with Python 3.7+ based on standard Python type hints. It is designed to be easy to use and compatible with the latest version of Python, while providing high performance and ease of deployment. 
++ **PostgreSQL**is a powerful, open source, object-relational database system with a strong reputation for reliability, feature robustness, and performance. PostgreSQL is fully ACID (Atomicity, Consistency, Isolation, Durability) compliant, which means that it ensures data integrity and consistency even in the face of failures or errors.
++ **Docker** is a containerization platform that makes it easier to create, deploy, and run applications by using containers. It provides portability, isolation, scalability, reproducability. Hence, we have dockerized our server. 
+
 ## Implementation Approach
 
 Database : Postgresql ; Server : Uvicorn + FastAPI (for endpoints)
@@ -17,6 +22,8 @@ We put exception handling in place and handled any issues with the database upda
 We can handle multiple client requests trying to access same data by implementing locks and restricting the access to a single thread(request) at a time to avoid inconsistencies.
 
 The disadvantage however comes while maintaining the persistensy of database as just locks aren't enough to rollback the server in case of shutdown we needs logs and also a mechanism to revert back depending on those log. This basically means implenting core database features from scratch.
+
+If we use threading locks, the CPU and memory on server keeps on increasing as the number of consumers and producers increases.
 
 Another caveate of using this approach is with using fastAPI as fastAPI runs all the threads parallely from a main thread on different cores which means one will need to acquire and release the lock in the main thread for all the spawned threads to be able to access it. This can be solved using different library like flask but that comes with its own trade offs with performance.
 
