@@ -10,6 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 
 # Imports
 from disqueue import Producer, Consumer
+import requests
 import threading
 import random
 import time
@@ -28,18 +29,27 @@ def run_producer(file_name, topics):
     with open(file_name, "r") as f:
         log = f.read()
         for line in log.splitlines():
+            message_sent = False
+            while not message_sent:
             # Extract info
-            message = line.split("\t")[1]
-            topic = line.split("\t")[-1]
+                message = line.split("\t")[1]
+                topic = line.split("\t")[-1]
 
-            # Send message
-            try:
-                producer.send_message(topic=topic, message=message)
-                print(prefix,f"\tSent message {message} to topic {topic}")
-            except Exception as e:
-                print(prefix,"\t",e)
-            time.sleep(random.randint(1, 2))
+                # Send message
+                try:
+                    producer.send_message(topic=topic, message=message)
+                    print(prefix,f"\tSent message {message} to topic {topic}")
+                    message_sent = True
+                except requests.exceptions.ConnectionError:
+                    # Don't show messages for retry errors
+                    pass
+                except Exception as e:
+                    print(prefix,"\t",e)
+                time.sleep(random.random())
         
+    print(prefix,"\tProducer Completed Producing Messages")
+    time.sleep(60)
+    # Giving the consumers a 60 seconds time to consume all the messages
     global prodExited
     prodExited += 1
 
@@ -47,15 +57,25 @@ def run_consumer(name,topics):
     prefix = "C-" + name
     # Create consumer
     consumer = Consumer(topics=topics, broker="http://localhost:" + PORT)
-
+    
     # Consume messages
     while True:
+        global prodExited
+        if prodExited >= 5:
+            break
+
         for topic in topics:
-            if not consumer.get_size(topic=topic):
-                continue
             try:
+                topic_size = consumer.get_size(topic=topic)
+                if not topic_size:
+                    continue
                 message = consumer.get_next(topic=topic)
                 print(prefix,f"\tConsuming message from topic {topic} : {message}")
+            except requests.exceptions.ConnectionError:
+                # Don't show messages for retry errors
+                # Sleep for a bounded amount of time to avoid spamming the server
+                time.sleep(random.random())
+                pass
             except Exception as e:
                 print(prefix,"\t",e)
 
@@ -98,12 +118,12 @@ if __name__ == '__main__':
     for thread in consumer_threads:
         thread.join()
 
-    while prodExited < 5:
-        time.sleep(1)
-        for thread in threading.enumerate():
-            if thread != threading.main_thread():
-                thread.kill()
-        sys.exit(0)
+    # while prodExited >= 5:
+    #     time.sleep(1)
+    #     for thread in threading.enumerate():
+    #         if thread != threading.main_thread():
+    #             thread.kill()
+    #     sys.exit(0)
 
 
     
