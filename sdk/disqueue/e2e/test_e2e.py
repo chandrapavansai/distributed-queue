@@ -14,11 +14,15 @@ import threading
 import random
 import time
 
-PORT = 8000
+# Global variables
+prodExited = 0
+
+PORT = "8000"
 
 def run_producer(file_name, topics):
+    prefix = "P-" + file_name[-5]
     # Create producer
-    producer = Producer(topics=topics, broker="http://localhost:8080")
+    producer = Producer(topics=topics, broker="http://localhost:" + PORT)
 
     # Read log from filename
     with open(file_name, "r") as f:
@@ -29,55 +33,35 @@ def run_producer(file_name, topics):
             topic = line.split("\t")[-1]
 
             # Send message
-            print("P " + file_name[-5])
             try:
                 producer.send_message(topic=topic, message=message)
-                print(f"\tSent message {message} to topic {topic}")
+                print(prefix,f"\tSent message {message} to topic {topic}")
             except Exception as e:
-                print(e)
+                print(prefix,"\t",e)
             time.sleep(random.randint(1, 2))
+        
+    global prodExited
+    prodExited += 1
 
 def run_consumer(name,topics):
+    prefix = "C-" + name
     # Create consumer
-    consumer = Consumer(topics=topics, broker="http://localhost:8080")
-    kill = False
-    # Kill thread after 10 seconds
-    def kill_thread():
-        # Kill thread
-        global kill
-        kill = True
-        print("Killing thread")
-    threading.Timer(1, kill_thread).start()
+    consumer = Consumer(topics=topics, broker="http://localhost:" + PORT)
 
     # Consume messages
-    while not kill:
-        cnt = 0
+    while True:
         for topic in topics:
             if not consumer.get_size(topic=topic):
-                cnt = cnt + 1
                 continue
-            print("C " + name)
             try:
                 message = consumer.get_next(topic=topic)
-                print(f"\tConsuming message from topic {topic} : {message}")
+                print(prefix,f"\tConsuming message from topic {topic} : {message}")
             except Exception as e:
-                print(e)
-        if cnt == len(topics):
-            break
+                print(prefix,"\t",e)
 
 
 if __name__ == '__main__':
 
-    # Kill all threads on ctrl+c
-    def signal_handler(sig, frame):
-        print("Killing all threads")
-        for thread in threading.enumerate():
-            if thread != threading.main_thread():
-                thread.kill()
-        sys.exit(0)
-    
-    import signal
-    signal.signal(signal.SIGINT, signal_handler)
 
     # Create Producer threads
 
@@ -85,10 +69,13 @@ if __name__ == '__main__':
     producer_threads = []
     producer_threads.append(
         threading.Thread(target=run_producer, args=("./test_asgn1/producer_1.txt", ["T-1", "T-2", "T-3"])))
-    # producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/producer_2.txt", ["T-1", "T-3"])))
-    # producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/producer_3.txt", ["T-1"])))
-    # producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/producer_4.txt", ["T-2"])))
-    # producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/producer_5.txt", ["T-2"])))
+    producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/producer_2.txt", ["T-1", "T-3"])))
+    producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/producer_3.txt", ["T-1"])))
+    producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/producer_4.txt", ["T-2"])))
+    producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/producer_5.txt", ["T-2"])))
+
+    # producer_threads.append(threading.Thread(target=run_producer, args=("./test_asgn1/test.txt", ["T-2"])))
+
 
     # Create Consumer thread
     consumer_threads = []
@@ -110,6 +97,13 @@ if __name__ == '__main__':
 
     for thread in consumer_threads:
         thread.join()
+
+    while prodExited < 5:
+        time.sleep(1)
+        for thread in threading.enumerate():
+            if thread != threading.main_thread():
+                thread.kill()
+        sys.exit(0)
 
 
     
