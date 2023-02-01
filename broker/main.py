@@ -36,6 +36,10 @@ def create_topic(name: str):
     """
 
     cursor = db.cursor()
+    if crud.topic_exists(name, cursor):
+        raise HTTPException(status_code=status.HTTP_407_PROXY_AUTHENTICATION_REQUIRED,
+                            detail="Topic already exists")
+
     cursor.execute("""
         DO $$
         DECLARE
@@ -126,10 +130,16 @@ def dequeue(topic: str, consumer_id: str):
     cursor = db.cursor()
 
     # Check if topic exists in topic table
-    if crud.topic_exists(topic, cursor) is False:
+    if not crud.topic_exists(topic, cursor):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
-        # Return result from inside of the transaction
 
+    consumer_topic = crud.get_consumer_topic(consumer_id, cursor)
+    if consumer_topic is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Consumer not found")
+    elif consumer_topic != topic:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Consumer not registered for this topic")
+
+    # Return result from inside the transaction
     # Create function
     cursor.execute("""
     CREATE OR REPLACE FUNCTION dequeue(topic text, c_id text) RETURNS text AS $$
@@ -162,15 +172,16 @@ def dequeue(topic: str, consumer_id: str):
     #     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unable to update the position")
     # db.commit()
 
-    print('hello bro', 'size', size)
     # cursor.execute("""
     #     SELECT message 
     #     FROM (SELECT * FROM Queue WHERE topic_name = %s) 
     #     OFFSET %d ROWS 
     #     FETCH NEXT 1 ROWS ONLY""",
     #                (topic, pos,))
+
     message = cursor.fetchone()[0]
-    print(message)
+    if message is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Queue is empty")
 
     return {"message": message}
 
