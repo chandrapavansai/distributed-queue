@@ -13,15 +13,6 @@ services:
     ports:
       - 5433:5432
 
-
-  pg-admin:
-    image: dpage/pgadmin4:6
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@email.com
-      - PGADMIN_DEFAULT_PASSWORD=admin
-      - PGADMIN_LISTEN_PORT=5050
-    ports:
-      - 5050:5050
   app:
     build: ./broker
     container_name: distributed-queue-broker
