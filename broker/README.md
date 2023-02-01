@@ -39,3 +39,10 @@
   postgres=# create user myuser with encrypted password 'mypass';
   postgres=# grant all privileges on database mydb to myuser;
   ```
+  
+## Testing
++ Create seperate databse for testing
++ Run the tests with correct environment variables
+```sh
+python3 -m pytest test_main.py
+```
