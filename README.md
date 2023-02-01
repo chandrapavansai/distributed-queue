@@ -39,7 +39,7 @@ python3 -m unittest -v
 
 ```sh
 cd sdk/disqueue/e2e
-python3 ./test_e2e.py
+python3 ./test_e2e.py <test_dir>
 ````
 
 ## Design
