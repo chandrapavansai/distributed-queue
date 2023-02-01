@@ -42,3 +42,6 @@ cd sdk/disqueue/e2e
 python3 ./test_e2e.py
 ````
 
+## Design
+Checkout [Design.md](Design.md)
+
