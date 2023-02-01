@@ -70,7 +70,11 @@ Built the client library unit test suite using unittest mocking the responses us
 
 ### End to End
 
-Multiple producer threads are made to log several messages from corresponding log files simultaneously to the broker and at the same time multiple consumers are made to poll for various topics consuming them whenever the log messages are available
+Multiple producer threads are made to log several messages from corresponding log files simultaneously to the broker and at the same time multiple consumers are made to poll for various topics consuming them whenever the log messages are available.
+
+Added a random wait in the consumer if a queue is empty to prevent spamming of the server.
+
+Distinguished between the messages produced by attaching the Producer Name and Line Number in the log_file. 
 
 ## Challenges
 
