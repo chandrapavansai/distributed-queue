@@ -33,7 +33,7 @@ class Producer:
         res = req.post(self.broker + '/producer/register',
                        params={'topic': topic})
         if not res.ok:
-            raise Exception(message=res.json()['detail'])
+            raise Exception('Error while registering topic')
         self.topic_prod_ids[topic] = res.json()['producer_id']
 
     def send_message(self, topic: str, message: str):
@@ -48,7 +48,7 @@ class Producer:
             Exception: If the topic is not registered
         """
         if topic not in self.topic_prod_ids:
-            raise Exception(message="No topic found")
+            raise Exception("No topic found")
         res = req.post(self.broker + '/producer/produce',
                        params={'topic': topic,
                              "producer_id": self.topic_prod_ids[topic],
@@ -56,4 +56,4 @@ class Producer:
                              }
                        )
         if not res.ok:
-            raise Exception(message=res.json()['edtail'])
+            raise Exception("Error while sending message")

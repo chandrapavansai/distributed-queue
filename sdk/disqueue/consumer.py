@@ -30,7 +30,8 @@ class Consumer:
         res = req.post(self.broker + '/consumer/register',
                        params={'topic': topic})
         if not res.ok:
-            raise Exception(message=res.json()['detail'])
+            raise Exception('Error while registering topic')
+
         self.topic_cons_ids[topic] = res.json()['consumer_id']
 
     def get_next(self, topic: str) -> str:
@@ -48,7 +49,8 @@ class Consumer:
                        params={'topic': topic,
                              'consumer_id': self.topic_cons_ids[topic]})
         if not res.ok:
-            raise Exception(message=res.json()['detail'])
+            raise Exception('Error while getting next message')
+
         return res.json()['message']
     
     def get_size(self, topic: str) -> int:
@@ -67,5 +69,6 @@ class Consumer:
                        params={'topic': topic,
                              'consumer_id': self.topic_cons_ids[topic]})
         if not res.ok:
-            raise Exception(message=res.json()['detail'])
+            raise Exception('Error while getting size')
+
         return res.json()['size']
