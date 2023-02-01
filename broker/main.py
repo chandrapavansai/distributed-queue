@@ -147,7 +147,7 @@ def dequeue(topic: str, consumer_id: str):
         mess text;
     BEGIN
         LOCK TABLE Queue IN ROW EXCLUSIVE MODE;
-        SELECT message INTO mess FROM Queue WHERE topic_name = topic FOR UPDATE;
+        SELECT message INTO mess FROM (SELECT message FROM Queue WHERE topic_name = topic) as m OFFSET (SELECT pos FROM Consumer_Topic WHERE consumer_id = c_id and topic_name = topic) FETCH FIRST 1 ROWS ONLY FOR UPDATE;
         UPDATE Consumer_Topic SET pos = pos+1 WHERE consumer_id = c_id and topic_name = topic;
         RETURN mess;
     END;
@@ -222,8 +222,8 @@ async def size(topic: str, consumer_id: str):
     if not crud.topic_exists(topic, cursor):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
 
-    cursor.execute("SELECT COUNT(*) FROM Consumer_Topic WHERE consumer_id = %s AND topic_name = %s",
-                   (consumer_id, topic,))
+    cursor.execute("SELECT COUNT(*) FROM Queue WHERE topic_name = %s",
+                   (topic,))
     count = cursor.fetchone()[0]
     # Get position of consumer
     cursor.execute("SELECT pos FROM Consumer_Topic WHERE consumer_id = %s AND topic_name = %s", (consumer_id, topic,))
