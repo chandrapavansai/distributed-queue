@@ -33,12 +33,9 @@
 - Install [PostgreSQL](https://www.postgresql.org/download/)
 - Make sure PostgreSQL is up and running
 - Open postgres prompt and create a database and a user to access the database
-
   ```sh
   $ sudo -u postgres psql
   postgres=# create database mydb;
   postgres=# create user myuser with encrypted password 'mypass';
   postgres=# grant all privileges on database mydb to myuser;
- ```
- 
- 
+  ```
