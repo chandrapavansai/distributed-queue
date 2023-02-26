@@ -7,11 +7,17 @@ services:
       - POSTGRES_DB=ds-assgn-1
     volumes:
       - ./db-data/:/var/lib/postgresql/data/
-#      - ./broker/database.sql:/docker-entrypoint-initdb.d/init.sql
+    #      - ./broker/database.sql:/docker-entrypoint-initdb.d/init.sql
     expose:
       - 5432
     ports:
       - 5433:5432
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d ds-assgn-1" ]
+      interval: 15s
+      timeout: 30s
+      retries: 5
+      start_period: 5s
 
   app:
     build: ./broker
@@ -29,6 +35,5 @@ services:
     volumes:
       - ./broker:/code
     depends_on:
-      - postgres
-
-  
+      postgres:
+        condition: service_healthy
