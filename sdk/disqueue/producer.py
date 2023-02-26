@@ -18,7 +18,7 @@ class Producer:
         for topic in topics:
             self.register_topic(topic)
 
-    def register_topic(self, topic: str) -> int:
+    def register_topic(self, topic: str):
         """Function to register a topic
 
         Args:
