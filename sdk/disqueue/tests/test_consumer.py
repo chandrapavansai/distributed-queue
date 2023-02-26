@@ -16,7 +16,7 @@ class TestConsumer(unittest.TestCase):
 
         mock_requests.return_value = mock_response
 
-        consumer = Consumer(topics=[], broker="")
+        consumer = Consumer(topics=[], broker="localhost")
         consumer.register_topic('ravi')
         self.assertEqual(consumer.topic_cons_ids['ravi'], 129)
 
@@ -32,5 +32,5 @@ class TestConsumer(unittest.TestCase):
 
         mock_requests.return_value = mock_response
 
-        consumer = Consumer(topics=[], broker="")
+        consumer = Consumer(topics=[], broker="localhost")
         consumer.register_topic('ravi')

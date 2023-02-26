@@ -9,4 +9,4 @@ env/
 
 # Ignore broker/db-data folder
 db-data/
-
+.vscode
