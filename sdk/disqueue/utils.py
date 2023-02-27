@@ -1,33 +1,32 @@
-import requests as req
+from connection import Connection
 
-def list_topics(broker: str) -> list[str]:
+
+def list_topics(connection: Connection) -> list[str]:
     """Function to list all the topics
     
     Args:
-        broker (str): url of the broker
+        connection (Connection): Connection to broker manager
     Return:
         list[str]: list of topics
     Raises:
         Exception: If the response is not ok
     """
-    res = req.get(broker + '/topics')
+    res = connection.get('/topics')
     if not res.ok:
-        raise Exception(message=res.json().message)
-    print(res.json())
-    return res.json().topics
+        raise Exception('Failed to getch topics list', res.json())
+    return res.json()['topics']
 
-def create_topic(broker: str, topic: str) -> None:
+
+def create_topic(topic: str, connection: Connection) -> None:
     """Function to create a topic
 
     Args:
-        broker (str): url of the broker
         topic (str): topic to be created
+        connection (Connection): Connection to broker manager
 
     Raises:
         Exception: If the response is not ok
     """
-    res = req.post(broker + '/topics')
+    res = connection.post('/topics', params={'name': topic})
     if not res.ok:
-        raise Exception(message=res.json().message)
-    print(res.json())
-    
+        raise Exception('Failed to create topic', res.json())

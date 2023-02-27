@@ -1,20 +1,36 @@
-import requests as req
+from connection import Connection
+from typing import Dict
+
+
+class TopicProducer:
+    def __init__(self, topic: str, connection: Connection):
+        self.topic = topic
+        self.connection = connection
+
+        res = connection.post('/producer/register', params={'topic': topic})
+        if not res.ok:
+            raise Exception('Error while registering topic')
+        self._prod_id = res.json()['producer_id']
+
+    def send_message(self, message: str):
+        res = self.connection.post('/producer/produce',
+                                   params={'topic': self.topic, 'producer_id': self._prod_id, 'message': message})
+        if not res.ok:
+            raise Exception('Error while sending message', res.json())
 
 
 class Producer:
-    def __init__(self, topics: list[str], broker: str):
+    def __init__(self, topics: list[str], connection: Connection):
         """Constructor for Producer class   
 
         Args:
             topics (list[str]): List of topics to be produced
-            broker (str): url of the broker
+            connection (Connection): Connection to the broker manager
         """
         # Check if / is present at the end of broker
-        if broker[-1] == '/':
-            broker = broker[:-1]  # Remove the last character
 
-        self.broker = broker
-        self.topic_prod_ids = dict()
+        self.connection = connection
+        self._producers: Dict[str, TopicProducer] = dict()
         for topic in topics:
             self.register_topic(topic)
 
@@ -26,15 +42,8 @@ class Producer:
 
         Raises:
             Exception: If the response is not ok
-
-        Returns:
-            int: producer_id
         """
-        res = req.post(self.broker + '/producer/register',
-                       params={'topic': topic})
-        if not res.ok:
-            raise Exception('Error while registering topic')
-        self.topic_prod_ids[topic] = res.json()['producer_id']
+        self._producers[topic] = TopicProducer(topic, self.connection)
 
     def send_message(self, topic: str, message: str):
         """Function to send a message to a topic
@@ -47,13 +56,6 @@ class Producer:
             Exception: If the response is not ok
             Exception: If the topic is not registered
         """
-        if topic not in self.topic_prod_ids:
-            raise Exception("No topic found")
-        res = req.post(self.broker + '/producer/produce',
-                       params={'topic': topic,
-                             "producer_id": self.topic_prod_ids[topic],
-                             "message": message
-                             }
-                       )
-        if not res.ok:
-            raise Exception("Error while sending message")
+        if topic not in self._producers:
+            raise Exception('Topic not registered')
+        self._producers[topic].send_message(message)
