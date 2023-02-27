@@ -1,8 +1,14 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+# from database import db
+import requests
 
 app = FastAPI()
 
+
+# TODO:
 # Run the Leader Selection Algorithm
+# Run the Heartbeat Algorithm
+# Run the Data Synchronization Algorithm
 
 """
 Manage the data:
@@ -32,6 +38,44 @@ API Calls:
     - Data Synchronization - /sync
 """
 
+# Search for WAL_TAG in the code to find the places where the WAL is to be used
+
+# Middleware to forward the request to the leader
+
+# Function to validate the requests
+
+
+def validate_request():
+    pass
+
+
+brokers = [
+    {
+        "IP_addr": "http://broker1:8000",
+        "is_alive": True
+    },
+    {
+        "IP_addr": "http://broker2:8000",
+        "is_alive": True
+    },
+    {
+        "IP_addr": "http://broker3:8000",
+        "is_alive": True
+    },
+]
+
+map_topic_parition_to_broker = {
+    "topic1": {
+        1: brokers[0],
+        2: brokers[1]
+    },
+    "topic2": {
+        1: brokers[0],
+        2: brokers[1],
+        3: brokers[2]
+    }
+}
+
 
 @app.get("/ping")
 def ping():
@@ -40,7 +84,7 @@ def ping():
 
 @app.get("/topics")
 @app.get("/topics/paritions")
-def list_topics():
+def list_topics(post : str = None):
     """
     Endpoint to list all topics and paritions
     :return: list of topics and paritions
@@ -70,6 +114,9 @@ def create_parition(topic: str, parition: int):
     :param parition: parition number
     :return: success message
     """
+
+    # WAL_TAG
+
     pass
 
 
@@ -80,47 +127,110 @@ def register_consumer(topic: str):
     :param topic: the topic to which the consumer wants to subscribe
     :return: consumer id
     """
+    # Insert the entry in the database
+    # Return the consumer id
+
+    # WAL_TAG
+
     pass
 
 
 @app.post("/producer/register")
-def register_producer(topic: str):
+def register_producer(topic: str, parition: int = None):
     """
     Endpoint to register a producer for a topic
     :param topic: the topic to which the producer wants to publish
     :return: producer id
     """
+
+    # WAL_TAG
+
     pass
 
 
 @app.get("/consumer/consume")
-def dequeue(topic: str, consumer_id: str):
+def dequeue(topic: str, consumer_id: str, parition: int = None):
     """
     Endpoint to dequeue a message from the queue
     :param topic: the topic from which the consumer wants to dequeue
     :param consumer_id: consumer id obtained while registering
     :return: log message
     """
+
+    # Need to switch the map_topic_parition_to_broker to a database
+
+    if topic not in map_topic_parition_to_broker:
+        raise HTTPException(status_code=404, detail="Topic does not exist")
+
+    # Get the broker for the topic and parition
+    if parition is None:
+        # Get the parition number from the database and do Round Robin
+        pass
+
+    if parition not in map_topic_parition_to_broker[topic]:
+        raise HTTPException(status_code=404, detail="Parition does not exist")
+
+    IP_addr = map_topic_parition_to_broker["topic1"][parition]["IP_addr"]
+
+    # Get the message from the broker
+    response = requests.get(f"{IP_addr}/consumer/consume", params={
+                            "topic": topic, "consumer_id": consumer_id, "parition": parition})
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise HTTPException(status_code=response.status_code,
+                            detail=response.json())
+
+    # WAL_TAG
+
     pass
 
 
 @app.post("/producer/produce")
-def enqueue(topic: str, producer_id: str, message: str):
+def enqueue(topic: str, producer_id: str, message: str, parition: int = None):
     """
     Endpoint to enqueue a message to the queue
     :param topic: the topic to which the producer wants to enqueue
     :param producer_id: producer id obtained while registering
     :param message: log message to be enqueued
     """
+
+    # NOTE:
+    # Has to be a leader broker manager
+
+    # Need to switch the map_topic_parition_to_broker to a database
+
+    if topic not in map_topic_parition_to_broker:
+        raise HTTPException(status_code=404, detail="Topic does not exist")
+
+    if parition is None:
+        # Get the parition number from the database and do Round Robin
+        pass
+
+    if parition not in map_topic_parition_to_broker[topic]:
+        raise HTTPException(status_code=404, detail="Parition does not exist")
+
+    IP_addr = map_topic_parition_to_broker["topic1"][parition]["IP_addr"]
+
+    # Send the message to the broker
+    response = requests.post(f"{IP_addr}/producer/produce", params={"topic": topic,
+                             "producer_id": producer_id, "message": message, "parition": parition})
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise HTTPException(status_code=response.status_code,
+                            detail=response.json())
+
     pass
 
 
 @app.get("/size")
-async def size(topic: str, consumer_id: str):
+async def size(topic: str, consumer_id: str, parition: int = None):
     """
     Endpoint to get the size of the queue for a given topic
     :param topic: the topic for which the size is to be obtained
     :param consumer_id: consumer id obtained while registering
+    :param parition: parition number
     :return: size of the queue
     """
     pass
@@ -132,6 +242,7 @@ def heartbeat():
     Endpoint to send heartbeat
     :return: success message
     """
+    return {"message": "alive"}
     pass
 
 
