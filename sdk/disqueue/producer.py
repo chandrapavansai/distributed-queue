@@ -1,8 +1,12 @@
 from connection import Connection
 from typing import Dict
+import threading
+from time import sleep
 
 
 class TopicProducer:
+    PING_FREQUENCY = 10
+
     def __init__(self, topic: str, connection: Connection):
         self.topic = topic
         self.connection = connection
@@ -11,12 +15,23 @@ class TopicProducer:
         if not res.ok:
             raise Exception('Error while registering topic')
         self._prod_id = res.json()['producer_id']
+        self._stop_thread = False
+        self._worker_thread = threading.Thread(target=self._worker_routine)
 
     def send_message(self, message: str):
         res = self.connection.post('/producer/produce',
                                    params={'topic': self.topic, 'producer_id': self._prod_id, 'message': message})
         if not res.ok:
             raise Exception('Error while sending message', res.json())
+
+    def _worker_routine(self):
+        while not self._stop_thread:
+            self.connection.get('/consumer/ping')
+            sleep(1 / self.PING_FREQUENCY)
+
+    def __del__(self):
+        self._stop_thread = True
+        self._worker_thread.join()
 
 
 class Producer:

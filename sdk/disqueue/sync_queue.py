@@ -38,7 +38,7 @@ class SyncQueue:
         self._lock.release()
         return ans
 
-    def __len__(self):
+    def __len__(self) -> int:
         self._lock.acquire()
         ans = len(self._queue)
         self._lock.release()
