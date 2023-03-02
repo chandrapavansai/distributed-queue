@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 # from database import db
+from uuid import uuid4
 import requests
 
 app = FastAPI()
@@ -49,7 +50,7 @@ def validate_request():
     pass
 
 
-brokers = [
+brokers_table = [
     {
         "IP_addr": "http://broker1:8000",
         "is_alive": True
@@ -64,17 +65,90 @@ brokers = [
     },
 ]
 
-map_topic_parition_to_broker = {
+managers_table = [
+    {
+        "IP_addr": "http://manager1:5000",
+        "is_alive": False
+    },
+    {
+        "IP_addr": "http://manager2:5000",
+        "is_alive": True
+    },
+    {
+        "IP_addr": "http://manager3:5000",
+        "is_alive": True
+    },
+]
+
+topic_parition_to_broker_table = {
     "topic1": {
-        1: brokers[0],
-        2: brokers[1]
+        1: 0,   # Broker 0
+        2: 1    # Broker 1
     },
     "topic2": {
-        1: brokers[0],
-        2: brokers[1],
-        3: brokers[2]
+        1: 0,   # Broker 0
+        2: 1,   # Broker 1
+        3: 2    # Broker 2
     }
 }
+
+consumer_topic_table = {
+    "consumer1": {
+        "topic1": {
+            "parition": 1,
+            "round_robin": False,
+        },
+    },
+    "consumer2": {
+        "topic1": {
+            "parition": 2,
+            "round_robin": False,
+        },
+        "topic2": {
+            "parition": 1,
+            "round_robin": True,
+        },
+    }
+}
+
+producer_topic_table = {
+    "producer1": {
+        "topic1": {
+            "parition": 1,
+            "round_robin": False,
+        },
+    },
+    "producer2": {
+        "topic1": {
+            "parition": 2,
+            "round_robin": False,
+        },
+        "topic2": {
+            "parition": 1,
+            "round_robin": True,
+        },
+    }
+}
+
+# TODO: Leader election algorithm
+leader_manager = "http://manager2:5000"
+
+
+# TODO: Consistent hashing algorithm
+# Assign broker to new parition
+def assign_broker_to_new_parition():
+    return 0
+
+# TODO: Hashing algorithm
+
+
+def get_round_robin_parition(consumer_id, topic):
+    pass
+
+
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}
 
 
 @app.get("/ping")
@@ -82,18 +156,31 @@ def ping():
     return {"message": "pong"}
 
 
+@app.get("/managers")
+def get_managers():
+    return {
+        "managers": [
+            (manager["IP_addr"], (manager["IP_addr"] == leader_manager))
+            for manager in managers_table if manager["is_alive"]
+        ]
+    }
+
+
 @app.get("/topics")
 @app.get("/topics/paritions")
-def list_topics(post : str = None):
+def list_topics():
     """
     Endpoint to list all topics and paritions
     :return: list of topics and paritions
     """
-    return {"topics": {
-        "topic1": [1, 2],
-        "topic2": [1, 2, 3]
-    }}
-    pass
+    # Get the topics and paritions using dictionary comprehension
+    return {
+        "topics": [
+            {
+                topic: list(topic_parition_to_broker_table[topic].keys())
+            } for topic in topic_parition_to_broker_table
+        ]
+    }
 
 
 @app.post("/topics")
@@ -103,9 +190,25 @@ def create_topic(name: str):
     :param name: name of the topic
     :return: success message
     """
-    pass
+
+    # Need to be a leader broker manager
+    # Use consistent hashing and get the broker for the topic - first default parition
+
+    if name in topic_parition_to_broker_table:
+        raise HTTPException(
+            status_code=400, detail="Topic with that name already exists")
+
+    broker_num = assign_broker_to_new_parition()
+    topic_parition_to_broker_table[name] = {
+        1: brokers_table[broker_num]
+    }
+
+    # WAL_TAG
+
+    return {"message": "Topic created successfully"}
 
 
+# TODO: Should we allow the parition parameter?
 @app.post("/topics/paritions")
 def create_parition(topic: str, parition: int):
     """
@@ -115,13 +218,28 @@ def create_parition(topic: str, parition: int):
     :return: success message
     """
 
+    # Need to be a leader broker manager
+
+    # Use consistent hashing and get the broker for the parition
+    broker_num = assign_broker_to_new_parition()
+
+    if topic in topic_parition_to_broker_table and parition in topic_parition_to_broker_table[topic]:
+        raise HTTPException(
+            status_code=400, detail="Parition with that ID already exists")
+
+    topic_parition_to_broker_table[topic] = {
+        parition: brokers_table[broker_num]
+    }
+
     # WAL_TAG
+
+    return {"message": "Parition created successfully"}
 
     pass
 
 
 @app.post("/consumer/register")
-def register_consumer(topic: str):
+def register_consumer(topic: str, parition: int = None):
     """
     Endpoint to register a consumer for a topic
     :param topic: the topic to which the consumer wants to subscribe
@@ -130,6 +248,15 @@ def register_consumer(topic: str):
     # Insert the entry in the database
     # Return the consumer id
 
+    consumer_id = uuid4()
+    consumer_topic_table[consumer_id] = {
+        topic: {
+            "parition": parition,
+            "round_robin": (parition is None)
+        }
+    }
+
+    return consumer_id
     # WAL_TAG
 
     pass
@@ -143,6 +270,18 @@ def register_producer(topic: str, parition: int = None):
     :return: producer id
     """
 
+    # Insert the entry in the database
+    # Return the producer id
+
+    producer_id = uuid4()
+    producer_topic_table[producer_id] = {
+        topic: {
+            "parition": parition,
+            "round_robin": (parition is None)
+        }
+    }
+
+    return producer_id
     # WAL_TAG
 
     pass
@@ -157,33 +296,39 @@ def dequeue(topic: str, consumer_id: str, parition: int = None):
     :return: log message
     """
 
-    # Need to switch the map_topic_parition_to_broker to a database
+    # NOTE:
+    # Read-only broker managers
 
-    if topic not in map_topic_parition_to_broker:
+    # Need to switch the topic_parition_to_broker_table to a database
+
+    if topic not in topic_parition_to_broker_table:
         raise HTTPException(status_code=404, detail="Topic does not exist")
 
-    # Get the broker for the topic and parition
     if parition is None:
         # Get the parition number from the database and do Round Robin
-        pass
+        parition = get_round_robin_parition(consumer_id, topic)
 
-    if parition not in map_topic_parition_to_broker[topic]:
+    if parition not in topic_parition_to_broker_table[topic]:
         raise HTTPException(status_code=404, detail="Parition does not exist")
 
-    IP_addr = map_topic_parition_to_broker["topic1"][parition]["IP_addr"]
+    # Get the broker for the topic and parition
+    IP_addr = brokers_table[topic_parition_to_broker_table[topic]
+                            [parition]]["IP_addr"]
 
     # Get the message from the broker
     response = requests.get(f"{IP_addr}/consumer/consume", params={
-                            "topic": topic, "consumer_id": consumer_id, "parition": parition})
+                            "topic": topic,
+                            "consumer_id": consumer_id,
+                            "parition": parition})
+
     if response.status_code == 200:
         return response.json()
     else:
         raise HTTPException(status_code=response.status_code,
                             detail=response.json())
 
-    # WAL_TAG
-
-    pass
+    # No need to update the offset in the database as the offset is updated in the broker
+    # So, read-nothing property is maintained
 
 
 @app.post("/producer/produce")
@@ -198,30 +343,36 @@ def enqueue(topic: str, producer_id: str, message: str, parition: int = None):
     # NOTE:
     # Has to be a leader broker manager
 
-    # Need to switch the map_topic_parition_to_broker to a database
+    # Need to switch the topic_parition_to_broker_table to a database
 
-    if topic not in map_topic_parition_to_broker:
+    if topic not in topic_parition_to_broker_table:
         raise HTTPException(status_code=404, detail="Topic does not exist")
 
     if parition is None:
         # Get the parition number from the database and do Round Robin
-        pass
+        parition = get_round_robin_parition(producer_id, topic)
 
-    if parition not in map_topic_parition_to_broker[topic]:
+    if parition not in topic_parition_to_broker_table[topic]:
         raise HTTPException(status_code=404, detail="Parition does not exist")
 
-    IP_addr = map_topic_parition_to_broker["topic1"][parition]["IP_addr"]
+    # Get the broker for the topic and parition
+    IP_addr = brokers_table[topic_parition_to_broker_table[topic]
+                            [parition]]["IP_addr"]
 
     # Send the message to the broker
-    response = requests.post(f"{IP_addr}/producer/produce", params={"topic": topic,
-                             "producer_id": producer_id, "message": message, "parition": parition})
+    response = requests.post(f"{IP_addr}/producer/produce", params={
+        "topic": topic,
+        "producer_id": producer_id,
+        "message": message,
+        "parition": parition})
+
     if response.status_code == 200:
         return response.json()
     else:
         raise HTTPException(status_code=response.status_code,
                             detail=response.json())
 
-    pass
+    # WAL_TAG : No need to update actually as the offset is updated in the broker
 
 
 @app.get("/size")
