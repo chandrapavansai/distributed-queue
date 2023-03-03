@@ -1,11 +1,12 @@
 import os
-import psycopg2
+from sqlalchemy import create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-# from dotenv import load_dotenv, find_dotenv
+from dotenv import load_dotenv, find_dotenv
 
 # Take the credentials from the .env file
-# env_path = find_dotenv()
-# load_dotenv(env_path)
+env_path = find_dotenv()
+load_dotenv(env_path)
 
 
 DATABASE_NAME = os.getenv('DB_NAME') if os.getenv('DB_NAME') is not None else 'ds-assgn-1'
@@ -14,26 +15,10 @@ PASSWORD = os.getenv('DB_PASSWORD') if os.getenv('DB_PASSWORD') is not None else
 HOST = os.getenv('DB_HOST') if os.getenv('DB_HOST') is not None else 'localhost'
 PORT = os.getenv('DB_PORT') if os.getenv('DB_PORT') is not None else '5432'
 
-db = psycopg2.connect(database=DATABASE_NAME,
-                      host=HOST,
-                      user=USER,
-                      password=PASSWORD,
-                      port=PORT)
+SQLALCHEMY_DATABASE_URL = f'postgresql://{USER}:{PASSWORD}@{HOST}:{PORT}/{DATABASE_NAME}'
 
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
-def init_db():
-    with db.cursor() as cursor:
-        cursor.execute(open("database.sql", "r").read())
-        db.commit()
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-
-def clear_db():
-    with db.cursor() as cursor:
-        cursor.execute("DELETE FROM Queue")
-        cursor.execute("DELETE FROM Consumer_Topic")
-        cursor.execute("DELETE FROM Producer_Topic")
-        cursor.execute("DELETE FROM Topic")
-        db.commit()
-
-
-init_db()
+Base = declarative_base()

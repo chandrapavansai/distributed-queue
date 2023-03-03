@@ -16,7 +16,7 @@
    ```
 - Run the built image
   ```sh
-  docker run -dp 80:80 broker-app --env DB_NAME=brokerdb ...
+  docker run -dp 8000:8000 broker-app --env DB_NAME=brokerdb ...
   ```
   `...` signifies other environment variables. Checkout [Docker run documentation](https://docs.docker.com/engine/reference/commandline/run/#-set-environment-variables--e---env---env-file) for more on setting environment variables
   
@@ -24,9 +24,9 @@
 ### Without docker
 
 - Install the pip dependencies from requiements.txt
-- Run the following command to start the server on port 80 (Different port can be used too)
+- Run the following command to start the server on port 8000 (Different port can be used too)
   ```sh
-  uvicorn main:app --host 0.0.0.0 --port 80 --reload
+  uvicorn main:app --host 0.0.0.0 --port 8000 --reload
   ```
 
 ### Database Setup
@@ -44,5 +44,5 @@
 + Create seperate database for testing
 + Run the tests with correct environment variables
 ```sh
-python3 -m pytest test_main.py
+python3 -m pytest test_broker.py
 ```

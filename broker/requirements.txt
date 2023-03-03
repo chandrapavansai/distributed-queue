@@ -1,6 +1,8 @@
-uvicorn
-fastapi~=0.89.1
+fastapi==0.92.0
+SQLAlchemy==2.0.4
+pydantic~=1.10.4
+uvicorn==0.20.0
 psycopg2-binary
-python-dotenv
+python-dotenv~=1.0.0
 pytest
 httpx
