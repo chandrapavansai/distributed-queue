@@ -9,4 +9,8 @@ env/
 
 # Ignore broker/db-data folder
 db-data/
+redis-data/
 .vscode
+
+# Ignore override docker-compose file
+docker-compose.override.yml
