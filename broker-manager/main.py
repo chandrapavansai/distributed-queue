@@ -1,9 +1,17 @@
 from fastapi import FastAPI, HTTPException
 # from database import db
 from uuid import uuid4
+from hash_ring import HashRing
+import heapq
 import requests
 
+
 app = FastAPI()
+ring = HashRing([])
+
+
+
+
 
 
 # TODO:
@@ -46,6 +54,36 @@ API Calls:
 # Function to validate the requests
 
 
+
+
+# utility functions for using the hash ring
+
+def setup_hashring(brokers : list):
+    """
+    Utility function to setup the consistent hash function
+    :param brokers : list of the ip addresses of the brokers
+    """
+    ring = HashRing(brokers)
+
+
+def add_broker(ip : str):
+    """
+    Utility function to add the new broker to the hash ring
+    :param ip : ip address of the new broker 
+    """
+    ring.add_node(ip, {'weight': 1})
+
+
+def remove_broker(ip : str):
+    """
+    Utility function to remove an existing broker from the hash ring
+    :param ip : ip address of the broker to be removed 
+    """
+    ring.remove_node(ip)
+
+
+
+
 def validate_request():
     pass
 
@@ -64,6 +102,14 @@ brokers_table = [
         "is_alive": True
     },
 ]
+
+broker_ip_to_id = []
+for i in range(0,len(brokers_table)):
+    broker_ip_to_id[brokers_table[i]["IP_addr"]] = i
+
+
+
+
 
 managers_table = [
     {
@@ -130,20 +176,43 @@ producer_topic_table = {
     }
 }
 
+
+# datastructures and utility functions for implementing round robin broker selection
+cur_broker_id = {}
+for topic in topic_parition_to_broker_table:
+    cur_broker_id[topic] = 0
+
+
 # TODO: Leader election algorithm
 leader_manager = "http://manager2:5000"
 
 
 # TODO: Consistent hashing algorithm
 # Assign broker to new parition
-def assign_broker_to_new_parition():
-    return 0
+def assign_broker_to_new_parition(topic : str, partition : int):
+    """
+    Endpoint to create a parition for a topic
+    :param topic: name of the topic
+    :param parition: parition number
+    :return: assigned broker id
+    """
+    key = topic + "###" + str(partition)
+    broker_ip = ring.get_node(key)
+    return broker_ip_to_id[broker_ip]
+    
 
 # TODO: Hashing algorithm
 
 
-def get_round_robin_parition(consumer_id, topic):
-    pass
+def get_round_robin_partition(topic):
+    """
+    :param topic: name of the topic
+    :return: assigned broker id
+    """
+    if topic not in topic_parition_to_broker_table.keys():
+        return -1
+    id = (topic_parition_to_broker_table[topic].values())[cur_broker_id[topic]%len(topic_parition_to_broker_table[topic])]
+    return id
 
 
 @app.get("/")
@@ -198,7 +267,7 @@ def create_topic(name: str):
         raise HTTPException(
             status_code=400, detail="Topic with that name already exists")
 
-    broker_num = assign_broker_to_new_parition()
+    broker_num = assign_broker_to_new_parition(name, 0)
     topic_parition_to_broker_table[name] = {
         1: brokers_table[broker_num]
     }
@@ -208,9 +277,11 @@ def create_topic(name: str):
     return {"message": "Topic created successfully"}
 
 
-# TODO: Should we allow the parition parameter?
+
+
+# TODO: Should we allow the partition parameter?
 @app.post("/topics/paritions")
-def create_parition(topic: str, parition: int):
+def create_parition(topic: str, partition: int):
     """
     Endpoint to create a parition for a topic
     :param topic: name of the topic
@@ -221,14 +292,14 @@ def create_parition(topic: str, parition: int):
     # Need to be a leader broker manager
 
     # Use consistent hashing and get the broker for the parition
-    broker_num = assign_broker_to_new_parition()
+    broker_num = assign_broker_to_new_parition(topic, partition)
 
-    if topic in topic_parition_to_broker_table and parition in topic_parition_to_broker_table[topic]:
+    if topic in topic_parition_to_broker_table and partition in topic_parition_to_broker_table[topic]:
         raise HTTPException(
             status_code=400, detail="Parition with that ID already exists")
 
     topic_parition_to_broker_table[topic] = {
-        parition: brokers_table[broker_num]
+        partition: brokers_table[broker_num]
     }
 
     # WAL_TAG
@@ -350,7 +421,7 @@ def enqueue(topic: str, producer_id: str, message: str, parition: int = None):
 
     if parition is None:
         # Get the parition number from the database and do Round Robin
-        parition = get_round_robin_parition(producer_id, topic)
+        parition = get_round_robin_partition(topic)
 
     if parition not in topic_parition_to_broker_table[topic]:
         raise HTTPException(status_code=404, detail="Parition does not exist")
