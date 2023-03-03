@@ -1,7 +1,8 @@
 from fastapi import FastAPI, HTTPException
-# from database import db
+from database import db
 from uuid import uuid4
 import requests
+import crud
 
 app = FastAPI()
 
@@ -50,48 +51,7 @@ def validate_request():
     pass
 
 
-brokers_table = [
-    {
-        "IP_addr": "http://broker1:8000",
-        "is_alive": True
-    },
-    {
-        "IP_addr": "http://broker2:8000",
-        "is_alive": True
-    },
-    {
-        "IP_addr": "http://broker3:8000",
-        "is_alive": True
-    },
-]
-
-managers_table = [
-    {
-        "IP_addr": "http://manager1:5000",
-        "is_alive": False
-    },
-    {
-        "IP_addr": "http://manager2:5000",
-        "is_alive": True
-    },
-    {
-        "IP_addr": "http://manager3:5000",
-        "is_alive": True
-    },
-]
-
-topic_parition_to_broker_table = {
-    "topic1": {
-        1: 0,   # Broker 0
-        2: 1    # Broker 1
-    },
-    "topic2": {
-        1: 0,   # Broker 0
-        2: 1,   # Broker 1
-        3: 2    # Broker 2
-    }
-}
-
+#
 consumer_topic_table = {
     "consumer1": {
         "topic1": {
@@ -142,8 +102,18 @@ def assign_broker_to_new_parition():
 # TODO: Hashing algorithm
 
 
-def get_round_robin_parition(consumer_id, topic):
-    pass
+def get_round_robin_parition(client_id, topic):
+    cursor = db.cursor()
+    parition = crud.get_consumer_topic_parition(client_id, topic, cursor)
+
+    # Using round robin algorithm, get the next parition
+    # TODO: Get the next parition
+    next_parition = parition + 1
+    crud.set_consumer_topic_parition(client_id, topic, next_parition, cursor)
+
+    # No need to commit as we are not changing anything
+    # db.commit()
+    return parition
 
 
 @app.get("/")
@@ -158,32 +128,42 @@ def ping():
 
 @app.get("/managers")
 def get_managers():
+
+    cursor = db.cursor()
     return {
         "managers": [
-            (manager["IP_addr"], (manager["IP_addr"] == leader_manager))
-            for manager in managers_table if manager["is_alive"]
+            (manager_ip, manager_ip == leader_manager)
+            for manager_ip in crud.get_alive_managers(cursor)
         ]
     }
 
+    # No need to commit as we are not changing anything
+    # db.commit()
 
-@app.get("/topics")
-@app.get("/topics/paritions")
+
+@ app.get("/topics")
+@ app.get("/topics/paritions")
 def list_topics():
     """
     Endpoint to list all topics and paritions
     :return: list of topics and paritions
     """
+
+    cursor = db.cursor()
     # Get the topics and paritions using dictionary comprehension
     return {
         "topics": [
             {
-                topic: list(topic_parition_to_broker_table[topic].keys())
-            } for topic in topic_parition_to_broker_table
+                topic: crud.get_paritions(topic, cursor)
+            } for topic in crud.get_topics(cursor)
         ]
     }
 
+    # No need to commit as we are not changing anything
+    # db.commit()
 
-@app.post("/topics")
+
+@ app.post("/topics")
 def create_topic(name: str):
     """
     Endpoint to create a topic
@@ -193,15 +173,19 @@ def create_topic(name: str):
 
     # Need to be a leader broker manager
     # Use consistent hashing and get the broker for the topic - first default parition
+    cursor = db.cursor()
 
-    if name in topic_parition_to_broker_table:
+    if crud.topic_exists(name, cursor):
         raise HTTPException(
             status_code=400, detail="Topic with that name already exists")
 
+    crud.create_topic(name, cursor)
+
     broker_num = assign_broker_to_new_parition()
-    topic_parition_to_broker_table[name] = {
-        1: brokers_table[broker_num]
-    }
+    # By default, create a parition with ID 1
+    crud.insert_parition_broker(name, 1, broker_num, cursor)
+
+    db.commit()
 
     # WAL_TAG
 
@@ -209,7 +193,7 @@ def create_topic(name: str):
 
 
 # TODO: Should we allow the parition parameter?
-@app.post("/topics/paritions")
+@ app.post("/topics/paritions")
 def create_parition(topic: str, parition: int):
     """
     Endpoint to create a parition for a topic
@@ -221,24 +205,27 @@ def create_parition(topic: str, parition: int):
     # Need to be a leader broker manager
 
     # Use consistent hashing and get the broker for the parition
-    broker_num = assign_broker_to_new_parition()
+    cursor = db.cursor()
 
-    if topic in topic_parition_to_broker_table and parition in topic_parition_to_broker_table[topic]:
+    if not crud.topic_exists(topic, cursor):
+        raise HTTPException(
+            status_code=400, detail="Topic with that name does not exist")
+
+    if crud.parition_exists(topic, parition, cursor):
         raise HTTPException(
             status_code=400, detail="Parition with that ID already exists")
 
-    topic_parition_to_broker_table[topic] = {
-        parition: brokers_table[broker_num]
-    }
+    broker_num = assign_broker_to_new_parition()
+    crud.insert_parition_broker(topic, parition, broker_num, cursor)
+
+    db.commit()
 
     # WAL_TAG
 
     return {"message": "Parition created successfully"}
 
-    pass
 
-
-@app.post("/consumer/register")
+@ app.post("/consumer/register")
 def register_consumer(topic: str, parition: int = None):
     """
     Endpoint to register a consumer for a topic
@@ -299,27 +286,29 @@ def dequeue(topic: str, consumer_id: str, parition: int = None):
     # NOTE:
     # Read-only broker managers
 
-    # Need to switch the topic_parition_to_broker_table to a database
+    cursor = db.cursor()
 
-    if topic not in topic_parition_to_broker_table:
+    if not crud.topic_exists(topic, cursor):
         raise HTTPException(status_code=404, detail="Topic does not exist")
 
     if parition is None:
-        # Get the parition number from the database and do Round Robin
+        # Get the parition number from the database and do Round Robin, and set the next parition
         parition = get_round_robin_parition(consumer_id, topic)
 
-    if parition not in topic_parition_to_broker_table[topic]:
+    if not crud.parition_exists(topic, parition, cursor):
         raise HTTPException(status_code=404, detail="Parition does not exist")
 
     # Get the broker for the topic and parition
-    IP_addr = brokers_table[topic_parition_to_broker_table[topic]
-                            [parition]]["IP_addr"]
+    broker_num = crud.get_related_broker(topic, parition, cursor)
+    IP_addr = crud.get_broker_ip(broker_num, cursor)
 
     # Get the message from the broker
     response = requests.get(f"{IP_addr}/consumer/consume", params={
                             "topic": topic,
                             "consumer_id": consumer_id,
                             "parition": parition})
+
+    db.commit()
 
     if response.status_code == 200:
         return response.json()
@@ -343,21 +332,21 @@ def enqueue(topic: str, producer_id: str, message: str, parition: int = None):
     # NOTE:
     # Has to be a leader broker manager
 
-    # Need to switch the topic_parition_to_broker_table to a database
+    cursor = db.cursor()
 
-    if topic not in topic_parition_to_broker_table:
+    if not crud.topic_exists(topic, cursor):
         raise HTTPException(status_code=404, detail="Topic does not exist")
 
     if parition is None:
-        # Get the parition number from the database and do Round Robin
+        # Get the parition number from the database and do Round Robin, and set the next parition
         parition = get_round_robin_parition(producer_id, topic)
 
-    if parition not in topic_parition_to_broker_table[topic]:
+    if not crud.parition_exists(topic, parition, cursor):
         raise HTTPException(status_code=404, detail="Parition does not exist")
 
     # Get the broker for the topic and parition
-    IP_addr = brokers_table[topic_parition_to_broker_table[topic]
-                            [parition]]["IP_addr"]
+    broker_num = crud.get_related_broker(topic, parition, cursor)
+    IP_addr = crud.get_broker_ip(broker_num, cursor)
 
     # Send the message to the broker
     response = requests.post(f"{IP_addr}/producer/produce", params={
@@ -365,6 +354,8 @@ def enqueue(topic: str, producer_id: str, message: str, parition: int = None):
         "producer_id": producer_id,
         "message": message,
         "parition": parition})
+
+    db.commit()
 
     if response.status_code == 200:
         return response.json()
