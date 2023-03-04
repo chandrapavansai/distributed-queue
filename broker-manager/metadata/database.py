@@ -17,26 +17,21 @@ class Database:
         clients = {
             "1": {
                 "live": 1,
-                "topic_pos": {
-                    "topic1": 0,
-                    "topic2": 0
-                },
-                "topic_partition": {
-                    "topic1": [0, 1, 2],
-                    "topic2": [0, 1, 2]
-                }
+                "topic_id": "topic1",
+                "topic1": 0,
+                "partition": 1
             },
             "2": {
                 "live": 1,
-                "topic_pos": {
-                    "topic1": 1,
-                    "topic2": 1
-                },
-                "topic_partition": {
-                    "topic1": [0, 1, 2],
-                    "topic2": [0, 1, 2]
-                },
+                "topic_id": "topic1",
+                "topic1": 1,
+                "partition": -1,
             },
+        }
+
+        topic_partition = {
+            "topic1": [0, 1, 2],
+            "topic2": [0, 1, 2]
         }
 
         brokers = {
@@ -83,3 +78,5 @@ class Database:
         
         for manager_id, manager_data in managers.items():
             Database.db.hset('manager:'+manager_id,json.dumps(manager_data))
+        
+        Database.db.hset('topic_partition',json.dumps(topic_partition))

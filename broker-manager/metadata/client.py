@@ -1,81 +1,59 @@
-from .service import Service
+from .partition import Partition
 import json
 import logging
 
 # Print logging info
 logging.basicConfig(level=logging.INFO)
 
-class Client(Service):
+class Client(Partition):
     def __init__(self,service_name,service_ip):
         super().__init__(service_name,service_ip)
 
-        # Add empty topic_pos and topic_partition
-        self.set_topic_pos({})
-        self.set_topic_partition({})
+        # Add partition -1
+        self.set_partition(-1)
+
+    def register_topic(self, topic_id,partition = -1):
+        self.db.hset(self.id,"topic_id",topic_id)
+        self.db.hset(self.id,topic_id,partition)
+        self.set_partition(partition)
     
-    def get_topic_pos(self) -> dict:
-        return json.loads(self.db.hget(self.id, "topic_pos").decode("utf-8"))
-
-    def get_topic_partition(self):
-        return json.loads(self.db.hget(self.id, "topic_partition").decode("utf-8"))
-
-    def set_topic_partition(self, topic_partition):
-        self.db.hset(self.id,"topic_partition",json.dumps(topic_partition))
-
-    def set_topic_pos(self, topic_pos):
-        self.db.hset(self.id,"topic_pos",json.dumps(topic_pos))
+    def get_partition(self):
+        return int(self.db.hget(self.id, "partition").decode("utf-8"))
     
-    def add_topic_partition(self, topic, partition):
-        # Get topic_partition
-        topic_partition = self.get_topic_partition()
-
-        if topic not in topic_partition: # Check if topic_partition has topic
-            topic_partition[topic] = [partition]
-        else: # Add topic
-            topic_partition[topic].append(partition)
-        
-        # Update topic_partition
-        self.set_topic_partition(topic_partition)
+    def get_topic_id(self):
+        return self.db.hget(self.id, "topic_id").decode("utf-8")
     
-    def update_topic_pos(self, topic):
-        # Get topic_partition
-        topic_partition = self.get_topic_partition()
-        num_partitions = len(topic_partition[topic])
-        # Get topic_pos
-        topic_pos = self.get_topic_pos()
-        
-        logging.info("Updating topic_pos for topic {}".format(topic))
-        logging.info("topic_pos: {}".format(topic_pos))
+    def get_curr_partition_round_robin(self, topic_id):
+        return int(self.db.hget(self.id, topic_id).decode("utf-8"))
 
-        if topic not in topic_pos: # Check if topic_pos has topic
-            topic_pos[topic] = 0
-        else: # Update topic_pos
-            logging.info("Updating topic_pos for topic {}".format(topic))
-            topic_pos[topic] += 1
-        if topic_pos[topic] >= num_partitions:
-            topic_pos[topic] = 0
-        
-        # Update topic_pos
-        self.set_topic_pos(topic_pos)
+    def set_curr_partition_round_robin(self, topic_id,partition):
+        self.db.hset(self.id,topic_id,partition)
 
-    def get_partition(self, topic):
-        # Get topic_partition
-        topic_partition = self.get_topic_partition()
+    def set_partition(self, partition):
+        self.db.hset(self.id,"partition",partition)
 
-        # Check if topic partition exists
-        if topic not in topic_partition:
-            raise Exception("Partition {} does not exist in topic {}".format(topic_partition,topic))
-
-        # Get topic_pos
-        topic_pos = self.get_topic_pos()
-
-        if topic not in topic_pos: # Check if topic_pos has topic
-            topic_pos[topic] = 0
-            # Update topic_pos
-            self.set_topic_pos(topic_pos)
-
+    def get_partition(self):
         # Get partition
-        partition = topic_partition[topic][topic_pos[topic]]
+        partition = self.get_partition()
+        # If partition is -1, then get partition from topic
+        if partition == -1:
+            topic_id = self.get_topic_id()
+            partition = self.get_curr_partition_round_robin(topic_id)
+            # Update partition
+            self.update_partition(topic_id)
         return partition
+
+    def update_partition(self, topic_id):
+        # Get current partition index
+        partition_idx = self.get_curr_partition_round_robin(topic_id)
+        # Get partition list
+        partition_list = self.get_gobal_topic_partition(topic_id)
+
+        # Get next partition index
+        partition_idx = (partition_idx + 1) % len(partition_list)
+
+        # Update partition
+        self.set_curr_partition_round_robin(topic_id,partition_idx)
+
 
         
