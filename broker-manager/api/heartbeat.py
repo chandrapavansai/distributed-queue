@@ -1,4 +1,4 @@
-import crud
+from . import crud
 from fastapi import APIRouter, HTTPException
 
 router = APIRouter(

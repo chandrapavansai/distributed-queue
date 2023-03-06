@@ -1,10 +1,10 @@
 from uuid import uuid4
 
-import crud
+from . import crud
 import requests
 from fastapi import APIRouter, HTTPException
 
-from ..metadata import Client
+from database import db
 
 router = APIRouter(
     prefix="/producer",
@@ -30,13 +30,14 @@ async def enqueue(topic: str, producer_id: str, message: str, parition: int = No
     if not crud.producer_exists(producer_id, cursor):
         raise HTTPException(status_code=404, detail="Producer does not exist")
 
-    if not crud.topic_registered(producer_id, topic, cursor):
+    if not crud.topic_registered_producer(producer_id, topic, cursor):
         raise HTTPException(
             status_code=403, detail="Producer is not registered to this topic")
 
     if parition is None:
         # Get the parition number from the database and do Round Robin, and set the next parition
-        parition = crud.get_round_robin_parition(producer_id, topic, cursor)
+        parition = crud.get_round_robin_parition_producer(
+            producer_id, topic, cursor)
 
     if not crud.parition_exists(topic, parition, cursor):
         raise HTTPException(status_code=404, detail="Parition does not exist")
@@ -46,13 +47,12 @@ async def enqueue(topic: str, producer_id: str, message: str, parition: int = No
     IP_addr = crud.get_broker_ip(broker_num, cursor)
 
     # Send the message to the broker
-    response = requests.post(f"{IP_addr}/producer/produce", params={
+    response = requests.post(f"{IP_addr}/messages", json={
         "topic": topic,
-        "producer_id": producer_id,
-        "message": message,
-        "parition": parition})
+        "content": message,
+        "partition": parition})
 
-    db.commit() # Update the round robin parition
+    db.commit()  # Update the round robin parition
 
     if response.status_code == 200:
         return response.json()
@@ -72,19 +72,23 @@ async def register_producer(topic: str, parition: int = None):
     # Insert the entry in the database
     # Return the producer id
 
-    producer_id = uuid4()
+    producer_id = str(uuid4())
 
     cursor = db.cursor()
 
     if not crud.topic_exists(topic, cursor):
         raise HTTPException(status_code=404, detail="Topic does not exist")
 
-    if parition is not None:
-        if not crud.parition_exists(topic, parition, cursor):
-            raise HTTPException(
-                status_code=404, detail="Parition does not exist")
+    is_round_robin = parition is None
+    if parition is None:
+        parition = 0
 
-    crud.register_producer(producer_id, topic, parition, cursor)
+    if not crud.parition_exists(topic, parition, cursor):
+        raise HTTPException(
+            status_code=404, detail="Parition does not exist")
 
-    db.commit() # Update the producer table entries
+    crud.register_producer(producer_id, topic, parition,
+                           is_round_robin, cursor)
+
+    db.commit()  # Update the producer table entries
     return producer_id

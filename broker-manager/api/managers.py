@@ -1,5 +1,7 @@
+from database import db
 from fastapi import APIRouter, HTTPException
-import crud
+
+from . import crud
 
 router = APIRouter(
     prefix="/managers",
