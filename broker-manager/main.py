@@ -1,16 +1,17 @@
 from fastapi import FastAPI, HTTPException
 from uuid import uuid4
-from hash_ring import HashRing
+# from hash_ring import HashRing
 import heapq
-import crud
+from api import crud
 
-from .api import consumer, producer, topics, heartbeat, managers
+from api import consumer, producer, topics, heartbeat, managers, broker
 
 app = FastAPI()
-ring = HashRing([])
+# ring = HashRing([])
 
 app.include_router(consumer.router)
 app.include_router(producer.router)
+app.include_router(broker.router)
 app.include_router(topics.router)
 app.include_router(managers.router)
 app.include_router(heartbeat.router)
@@ -63,7 +64,8 @@ def setup_hashring(brokers: list):
     Utility function to setup the consistent hash function
     :param brokers : list of the ip addresses of the brokers
     """
-    ring = HashRing(brokers)
+    # ring = HashRing(brokers)
+    pass
 
 
 def add_broker(ip: str):
@@ -71,7 +73,8 @@ def add_broker(ip: str):
     Utility function to add the new broker to the hash ring
     :param ip : ip address of the new broker 
     """
-    ring.add_node(ip, {'weight': 1})
+    # ring.add_node(ip, {'weight': 1})
+    pass
 
 
 def remove_broker(ip: str):
@@ -79,7 +82,8 @@ def remove_broker(ip: str):
     Utility function to remove an existing broker from the hash ring
     :param ip : ip address of the broker to be removed 
     """
-    ring.remove_node(ip)
+    # ring.remove_node(ip)
+    pass
 
 
 def validate_request():
@@ -101,9 +105,9 @@ brokers_table = [
     },
 ]
 
-broker_ip_to_id = []
-for i in range(0, len(brokers_table)):
-    broker_ip_to_id[brokers_table[i]["IP_addr"]] = i
+# broker_ip_to_id = []
+# for i in range(0, len(brokers_table)):
+#     broker_ip_to_id[brokers_table[i]["IP_addr"]] = i
 
 
 topic_parition_to_broker_table = {
@@ -119,9 +123,9 @@ topic_parition_to_broker_table = {
 }
 
 # datastructures and utility functions for implementing round robin broker selection
-cur_broker_id = {}
-for topic in topic_parition_to_broker_table:
-    cur_broker_id[topic] = 0
+# cur_broker_id = {}
+# for topic in topic_parition_to_broker_table:
+#     cur_broker_id[topic] = 0
 
 
 # TODO: Leader election algorithm
@@ -137,9 +141,10 @@ def assign_broker_to_new_parition(topic: str, partition: int):
     :param parition: parition number
     :return: assigned broker id
     """
-    key = topic + "###" + str(partition)
-    broker_ip = ring.get_node(key)
-    return broker_ip_to_id[broker_ip]
+    # key = topic + "###" + str(partition)
+    # broker_ip = ring.get_node(key)
+    # return broker_ip_to_id[broker_ip]
+    pass
 
 
 # TODO: Hashing algorithm
