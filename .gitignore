@@ -8,7 +8,7 @@
 env/
 
 # Ignore broker/db-data folder
-db-data/
+db-data*/
 redis-data/
 .vscode
 

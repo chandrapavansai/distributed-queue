@@ -39,32 +39,57 @@ services:
         condition: service_healthy
 
 # Redis
-  redis:
-    image: redis:alpine
-    container_name: redis
-    ports:
-      - 6379:6379
+  # redis:
+  #   image: redis:alpine
+  #   container_name: redis
+  #   ports:
+  #     - 6379:6379
+  #   volumes:
+  #     - ./redis-data:/data
+  #   command: redis-server 
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
+  postgres-mgr:
+    image: postgres:12
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=ds-assgn-2-mgr
     volumes:
-      - ./redis-data:/data
-    command: redis-server 
+      - ./db-data-mgr/:/var/lib/postgresql/data/
+    #      - ./broker/database.sql:/docker-entrypoint-initdb.d/init.sql
+    expose:
+      - 5432
+    ports:
+      - 5435:5432
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d ds-assgn-2-mgr" ]
+      interval: 15s
+      timeout: 30s
+      retries: 5
+      start_period: 5s
+
 
   # Broker Manager
   broker-manager:
     build: ./broker-manager
-    container_name: broker-manager
+    container_name: distributed-queue-manager
     command: uvicorn main:app --host 0.0.0.0 --port 81 --reload
+    environment:
+      - DB_HOST=postgres-mgr
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_PORT=5432
+      - DB_NAME=ds-assgn-2-mgr
     ports:
       - 8081:81
+      - 5679:5678
     volumes:
       - ./broker-manager:/code
     depends_on:
-      redis:
+      postgres-mgr:
         condition: service_healthy
-    environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
