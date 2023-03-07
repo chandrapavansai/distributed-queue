@@ -1,10 +1,10 @@
 from uuid import uuid4
 
-from . import crud
 import requests
+from database import db
 from fastapi import APIRouter, HTTPException
 
-from database import db
+from . import crud
 
 router = APIRouter(
     prefix="/consumer",
@@ -36,7 +36,8 @@ async def consume(topic: str, consumer_id: str, partition: int = None):
 
     if partition is None:
         # Get the partition number from the database and do Round Robin, and set the next partition
-        partition = crud.get_round_robin_partition_consumer(consumer_id, topic, cursor)
+        partition = crud.get_round_robin_partition_consumer(
+            consumer_id, topic, cursor)
 
     if not crud.partition_exists(topic, partition, cursor):
         raise HTTPException(status_code=404, detail="Partition does not exist")
@@ -53,9 +54,9 @@ async def consume(topic: str, consumer_id: str, partition: int = None):
                             "partition": partition,
                             "offset": offset})
 
-    db.commit()  # Update the round robin partition
-
-    if response.status_code == 200:
+    if response.ok:
+        crud.increment_offset(consumer_id, partition, cursor)
+        db.commit()  # Update the round robin partition
         return response.json()
     else:
         raise HTTPException(status_code=response.status_code,
@@ -95,3 +96,41 @@ def register_consumer(topic: str, partition: int = None):
     return consumer_id
 
     # WAL_TAG
+
+
+@router.get("/size")
+async def size(consumer_id: str, topic: str, partition: int = None):
+    """
+    Endpoint to get the size of the queue for a given topic
+    :param topic: the topic for which the size is to be obtained
+    :param consumer_id: consumer id obtained while registering
+    :param partition: partition number
+    :return: size of the queue
+    """
+
+    cursor = db.cursor()
+
+    if not crud.consumer_exists(consumer_id, cursor):
+        raise HTTPException(status_code=404, detail="Consumer does not exist")
+    
+    if not crud.topic_registered_consumer(consumer_id, topic, cursor):
+        raise HTTPException(
+            status_code=403, detail="Consumer is not registered to this topic")
+
+    if partition is None:
+        # Get messages to read from all partitions
+        partitions = crud.get_partitions(topic, cursor)
+        size = 0
+        for partition in partitions:
+            size += crud.get_size(topic, partition, cursor)
+            size -= crud.get_offset(consumer_id, partition, cursor)
+        return size
+        
+    if not crud.partition_exists(topic, partition, cursor):
+        raise HTTPException(status_code=404, detail="Partition does not exist")
+
+    size = crud.get_size(topic, partition, cursor)
+    offset = crud.get_offset(consumer_id, partition, cursor)
+
+    # No need to commit as we are not updating anything
+    return size - offset

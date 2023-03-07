@@ -52,9 +52,9 @@ async def enqueue(topic: str, producer_id: str, message: str, partition: int = N
         "content": message,
         "partition": partition})
 
-    db.commit()  # Update the round robin partition
-
-    if response.status_code == 200:
+    if response.ok:
+        crud.increment_size(topic, partition, cursor)
+        db.commit()  # Update the round robin partition
         return response.json()
     else:
         raise HTTPException(status_code=response.status_code,

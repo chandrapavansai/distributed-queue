@@ -1,6 +1,7 @@
 from database import db
 from fastapi import APIRouter, HTTPException
 
+import hashing.hash as Hash
 from . import crud
 
 router = APIRouter(
@@ -18,6 +19,7 @@ def list_topics():
 
     cursor = db.cursor()
     # Get the topics and partitions using dictionary comprehension
+    print(crud.get_topics(cursor))
     return {
         "topics": [
             {
@@ -31,7 +33,7 @@ def list_topics():
 
 
 @router.post("/")
-def create_topic(name: str):
+def create_topic(name: str, partition_count: int = 1):
     """
     Endpoint to create a topic
     :param name: name of the topic
@@ -46,63 +48,38 @@ def create_topic(name: str):
         raise HTTPException(
             status_code=400, detail="Topic with that name already exists")
 
-    # broker_num = assign_broker_to_new_partition(name, 0)
-    # topic_partition_to_broker_table[name] = {
-    #     1: brokers_table[broker_num]
-    # }
-    # crud.create_topic(name, cursor)
-
-    # broker_num = assign_broker_to_new_partition()
-    broker_num = 0
-    # By default, create a partition with ID 1
-    crud.set_partition_broker(broker_num, name, 0, cursor)
+    for i in range(partition_count):
+        Hash.assign_broker_to_new_partition(name, i, cursor)
 
     db.commit()
-
-    # WAL_TAG
 
     return {"message": "Topic created successfully"}
 
 
-# TODO: Should we allow the partition parameter?
-router.post("/partitions")
+@router.post("/partitions")
+def create_partition(topic: str):
+    """
+    Endpoint to create a partition for a topic
+    :param topic: name of the topic
+    :param partition: partition number
+    :return: success message
+    """
 
+    # Need to be a leader broker manager
+    cursor = db.cursor()
 
-# def create_partition(topic: str, partition: int):
-#     """
-#     Endpoint to create a partition for a topic
-#     :param topic: name of the topic
-#     :param partition: partition number
-#     :return: success message
-#     """
+    if not crud.topic_exists(topic, cursor):
+        raise HTTPException(
+            status_code=400, detail="Topic with that name does not exist")
+    
+    new_partition = crud.get_partition_count(topic, cursor)
 
-#     # Need to be a leader broker manager
+    if crud.partition_exists(topic, new_partition, cursor):
+        raise HTTPException(
+            status_code=400, detail="Partition with that ID already exists")
+    
+    Hash.assign_broker_to_new_partition(topic, new_partition, cursor)
 
-#     # Use consistent hashing and get the broker for the partition
-#     broker_num = assign_broker_to_new_partition(topic, partition)
+    db.commit()
 
-#     if topic in topic_partition_to_broker_table and partition in topic_partition_to_broker_table[topic]:
-#         raise HTTPException(
-#             status_code=400, detail="Partition with that ID already exists")
-
-#     topic_partition_to_broker_table[topic] = {
-#         partition: brokers_table[broker_num]
-#     }
-#     cursor = db.cursor()
-
-#     if not crud.topic_exists(topic, cursor):
-#         raise HTTPException(
-#             status_code=400, detail="Topic with that name does not exist")
-
-#     if crud.partition_exists(topic, partition, cursor):
-#         raise HTTPException(
-#             status_code=400, detail="Partition with that ID already exists")
-
-#     broker_num = assign_broker_to_new_partition()
-#     crud.insert_partition_broker(topic, partition, broker_num, cursor)
-
-#     db.commit()
-
-#     # WAL_TAG
-
-#     return {"message": "Partition created successfully"}
+    return {"message": "Partition created successfully"}

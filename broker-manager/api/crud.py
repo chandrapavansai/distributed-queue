@@ -15,7 +15,7 @@ def consumer_exists(consumer_id, cursor):
 def get_topics(cursor):
     if cursor is None:
         cursor = db.cursor()
-    cursor.execute("SELECT topic_name FROM Topic")
+    cursor.execute("SELECT DISTINCT topic_name FROM Topic")
     return [topic[0] for topic in cursor.fetchall()]
 
 
@@ -26,6 +26,14 @@ def get_partitions(topic, cursor):
     cursor.execute(
         "SELECT partition_id FROM Topic WHERE topic_name = %s", (topic,))
     return [partition[0] for partition in cursor.fetchall()]
+
+
+def get_partition_count(topic, cursor):
+    if cursor is None:
+        cursor = db.cursor()
+    cursor.execute(
+        "SELECT COUNT(*) FROM Topic WHERE topic_name = %s", (topic,))
+    return cursor.fetchone()[0]
 
 
 # Tested
@@ -59,12 +67,31 @@ def get_round_robin_partition_consumer(consumer_id, topic, cursor):
         "SELECT COUNT(*) FROM Topic WHERE topic_name = %s", (topic, ))
     partition_count = cursor.fetchone()[0]
 
-    partition = (partition + 1) % partition_count
+    for i in range(partition_count):
+        current_partition = (partition + i) % partition_count
 
-    # Set the new partition
+        # If entry not present in ConsumerPartition, create it
+        cursor.execute(
+            "SELECT COUNT(*) FROM ConsumerPartition WHERE consumer_id = %s AND partition_id = %s", (consumer_id, current_partition))
+        entry = cursor.fetchone()[0]
+        if not entry:
+            cursor.execute(
+                "INSERT INTO ConsumerPartition (consumer_id, partition_id) VALUES (%s, %s)", (consumer_id, current_partition))
+
+        # 0-indexed, current position to read from
+        offset = get_offset(consumer_id, current_partition, cursor)
+        size = get_size(topic, current_partition, cursor)  # size is 1-indexed
+
+        if offset < size:
+            new_partition = (current_partition + 1) % partition_count
+            cursor.execute(
+                "UPDATE Consumer SET partition_id = %s WHERE consumer_id = %s", (new_partition, consumer_id))
+            return current_partition
+
+    # All partitions are empty, so just move forward
+    new_partition = (partition + 1) % partition_count
     cursor.execute(
-        "UPDATE ConsumerPartition SET partition_id = %s WHERE consumer_id = %s", (partition, consumer_id))
-
+        "UPDATE Consumer SET partition_id = %s WHERE consumer_id = %s", (new_partition, consumer_id))
     return original_partition
 
 
@@ -74,6 +101,32 @@ def get_offset(consumer_id, partition, cursor):
         cursor = db.cursor()
     cursor.execute(
         "SELECT offset_val FROM ConsumerPartition WHERE consumer_id = %s AND partition_id = %s", (consumer_id, partition))
+    offset = cursor.fetchone()
+    if offset is None:
+        return 0
+    return offset[0]
+
+
+def increment_size(topic, partition, cursor):
+    if cursor is None:
+        cursor = db.cursor()
+    print("Updating size")
+    cursor.execute(
+        "UPDATE Topic SET size = size + 1 WHERE topic_name = %s AND partition_id = %s", (topic, partition))
+
+
+def increment_offset(consumer_id, partition, cursor):
+    if cursor is None:
+        cursor = db.cursor()
+    cursor.execute(
+        "UPDATE ConsumerPartition SET offset_val = offset_val + 1 WHERE consumer_id = %s AND partition_id = %s", (consumer_id, partition))
+
+
+def get_size(topic, partition, cursor):
+    if cursor is None:
+        cursor = db.cursor()
+    cursor.execute(
+        "SELECT size FROM Topic WHERE topic_name = %s AND partition_id = %s", (topic, partition))
     return cursor.fetchone()[0]
 
 
@@ -160,16 +213,18 @@ def get_round_robin_partition_producer(producer_id, topic, cursor):
     if not is_round_robin:
         return partition
 
+    original_partition = partition
+
     cursor.execute(
         "SELECT COUNT(*) FROM Topic WHERE topic_name = %s", (topic,))
     partition_count = cursor.fetchone()[0]
-    partition = (partition + 1) % partition_count
+    new_partition = (partition + 1) % partition_count
 
     # Set the new partition
     cursor.execute(
-        "UPDATE Producer SET partition_id = %s WHERE producer_id = %s", (partition, producer_id))
+        "UPDATE Producer SET partition_id = %s WHERE producer_id = %s", (new_partition, producer_id))
 
-    return partition
+    return original_partition
 
 
 # Tested
@@ -249,10 +304,12 @@ def update_partition_broker(broker_id, topic, partition, cursor):
     pass
 
 
-# Tested
-def create_broker(broker_id, ip, cursor):
+def get_broker_id(ip: str, cursor):
+    """
+    Utility function to get the broker id from the ip address
+    returns the broker id
+    """
     if cursor is None:
         cursor = db.cursor()
-    cursor.execute(
-        "INSERT INTO Broker (broker_id, ip_addr) VALUES (%s, %s)", (broker_id, ip))
-    pass
+    cursor.execute("SELECT broker_id FROM Broker WHERE ip_addr = %s", (ip,))
+    return cursor.fetchone()[0]

@@ -19,9 +19,9 @@ services:
       retries: 5
       start_period: 5s
 
-  app:
+
+  broker:
     build: ./broker
-    container_name: distributed-queue-broker
     command: uvicorn main:app --host 0.0.0.0 --port 80 --reload
     environment:
       - DB_HOST=postgres
@@ -32,6 +32,24 @@ services:
     ports:
       - 8080:80
       - 5678:5678
+    volumes:
+      - ./broker:/code
+    depends_on:
+      postgres:
+        condition: service_healthy
+  
+  broker2:
+    build: ./broker
+    command: uvicorn main:app --host 0.0.0.0 --port 80 --reload
+    environment:
+      - DB_HOST=postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_PORT=5432
+      - DB_NAME=ds-assgn-1
+    ports:
+      - 8081:80
+      - 5679:5678
     volumes:
       - ./broker:/code
     depends_on:
@@ -78,7 +96,7 @@ services:
   broker-manager:
     build: ./broker-manager
     container_name: distributed-queue-manager
-    command: uvicorn main:app --host 0.0.0.0 --port 81 --reload
+    command: uvicorn main:app --host 0.0.0.0 --port 80 --reload
     environment:
       - DB_HOST=postgres-mgr
       - DB_USER=postgres
@@ -86,8 +104,8 @@ services:
       - DB_PORT=5432
       - DB_NAME=ds-assgn-2-mgr
     ports:
-      - 8081:81
-      - 5679:5678
+      - 8090:80
+      - 5688:5678
     volumes:
       - ./broker-manager:/code
     depends_on:

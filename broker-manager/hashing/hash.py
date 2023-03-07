@@ -1,102 +1,85 @@
-import database as db
 import random
-from ..api import crud
 
+from api import crud
+from database import db
 
-active_brokers = {}
-no_of_brokers = 0
 
 # utility functions for using the hash ring
-
-def active():
+def get_active_brokers():
     """
     Utility function to return the id's of active brokers
     returns a list of active broker id's
     """
     cursor = db.cursor()
     cursor.execute("SELECT DISTINCT broker_id FROM Broker")
-    return cursor.fetchall()
+    return [id[0] for id in cursor.fetchall()]
 
 
-
-def add_broker(ip: str):
+def add_broker(ip: str, cursor):
     """
     Utility function to add the new broker to the hash ring
     :param ip : ip address of the new broker 
     """
-
-    cursor = db.cursor()
+    if cursor is None:
+        cursor = db.cursor()
     cursor.execute("SELECT MAX(broker_id) FROM Broker")
-    id = cursor.fetchone()[0] + 1
-    cursor.execute("INSERT INTO Broker (broker_id, ip_addr) VALUES (%s, %s)", (id, ip,))
+    id = cursor.fetchone()[0]
+    if id is None:
+        id = 0
+    else:
+        id += 1
+    cursor.execute(
+        "INSERT INTO Broker (broker_id, ip_addr) VALUES (%s, %s)", (id, ip,))
     return id
 
 
-def remove_brokers(list_ids: list):
+def remove_brokers(remove_ids_list: list, cursor):
     """
     Utility function to remove an existing broker from the hash ring
     :param ip : ip address of the broker to be removed 
     """
-
-
-    active_brokers = active()
-    cursor = db.cursor()
+    if cursor is None:
+        cursor = db.cursor()
+    active_brokers = get_active_brokers()
     no_of_brokers = len(active_brokers)
-    for id in list_ids:
+
+    for id in remove_ids_list:
         if id not in active_brokers:
             return -1
         else:
             active_brokers.remove(id)
-        
-    no_of_brokers -= len(list_ids)
+
+    no_of_brokers -= len(remove_ids_list)
 
     transfer_list = []
-    for id in list_ids:
-        cursor.execute("SELECT topic_name, partition_num FROM Topic WHERE broker_id = %s", (id,))
+    for id in remove_ids_list:
+        cursor.execute(
+            "SELECT topic_name, partition_id FROM Topic WHERE broker_id = %s", (id,))
         for topic, partition in cursor.fetchall():
-            transfer_list.append(tuple(topic, partition))
+            transfer_list.append((topic, partition,))
 
-    for id in list_ids:
-        cursor.execute("DELETE FROM Topic WHERE broker_id = %s", (id,))
-
+    # Do not delete partition details, as it is used in other tables
     for topic, partition in transfer_list:
-        new_broker_id = active_brokers[random.randint(0,no_of_brokers-1)]
-        crud.insert_partition_broker(topic, partition, new_broker_id)
-    
-    for id in list_ids:
+        new_broker_id = active_brokers[random.randint(0, no_of_brokers-1)]
+        crud.update_partition_broker(new_broker_id, topic, partition, cursor)
+
+    for id in remove_ids_list:
         cursor.execute("DELETE FROM Broker WHERE broker_id = %s", (id,))
+
     return no_of_brokers
 
-    
 
-
-def assign_broker_to_new_partition(topic: str, partition: int):
+def assign_broker_to_new_partition(topic: str, partition: int, cursor):
     """
     Endpoint to create a partition for a topic
     :param topic: name of the topic
     :param partition: partition number
     :return: assigned broker id
     """
-    active_brokers = active()
-    cursor = db.cursor()
+    active_brokers = get_active_brokers()
+    if cursor is None:
+        cursor = db.cursor()
+
     no_of_brokers = len(active_brokers)
-    new_broker_id = active_brokers[random.randint(0,no_of_brokers-1)]
-    crud.insert_partition_broker(topic, partition, new_broker_id)
-
-
-
-def get_round_robin_partition_consumer(consumer_id, topic):
-    cursor = db.cursor()
-    i = 0
-    cursor.execute("SELECT COUNT(*) FROM Topic WHERE topic_id = %s", (topic,))
-    size = cursor.fetchone()[0]
-    cursor.execute("SELECT partition_id FROM Consumer WHERE consumer_id = %s", (consumer_id,))
-    partition = cursor.fetchone()[0]
-    while 1:
-        cursor.execute("SELECT offset_val FROM ConsumerPartition WHERE consumer_id = %s AND partition_id = %s", (consumer_id, (partition+i)%size,))
-        offset = cursor.fetchone()[0]
-        max_offset = 0
-        if offset != max_offset: 
-            return (partition+i)%size
-        
-    return 0
+    new_broker_id = active_brokers[random.randint(0, no_of_brokers - 1)]
+    crud.set_partition_broker(new_broker_id, topic, partition, cursor)
