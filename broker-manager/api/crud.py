@@ -45,7 +45,7 @@ def topic_registered_consumer(consumer_id, topic, cursor):
     return cursor.fetchone()[0] > 0
 
 
-# Partially Tested
+# Tested
 def get_round_robin_partition_consumer(consumer_id, topic, cursor):
     if cursor is None:
         cursor = db.cursor()
@@ -70,10 +70,17 @@ def get_round_robin_partition_consumer(consumer_id, topic, cursor):
     for i in range(partition_count):
         current_partition = (partition + i) % partition_count
 
-        # If entry not present in ConsumerPartition, create it
         cursor.execute(
             "SELECT COUNT(*) FROM ConsumerPartition WHERE consumer_id = %s AND partition_id = %s", (consumer_id, current_partition))
         entry = cursor.fetchone()[0]
+
+        """
+        Check if the partition is never read by the consumer before
+        If it is, then add it to the ConsumerPartition table
+
+        If it is not, then check if the partition is empty
+        """
+
         if not entry:
             cursor.execute(
                 "INSERT INTO ConsumerPartition (consumer_id, partition_id) VALUES (%s, %s)", (consumer_id, current_partition))
@@ -242,7 +249,7 @@ def get_alive_managers(cursor):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute(
-        "SELECT ip FROM Manager WHERE is_alive = 1")
+        "SELECT ip_addr, is_leader FROM Manager")
     return cursor.fetchall()
 
 
@@ -313,3 +320,20 @@ def get_broker_id(ip: str, cursor):
         cursor = db.cursor()
     cursor.execute("SELECT broker_id FROM Broker WHERE ip_addr = %s", (ip,))
     return cursor.fetchone()[0]
+
+
+def create_manager(ip: str, is_leader: bool, cursor):
+    """
+    Utility function to create a manager in the database
+    """
+    if cursor is None:
+        cursor = db.cursor()
+    # Check if the manager already exists
+    cursor.execute("SELECT COUNT(*) FROM Manager WHERE ip_addr = %s", (ip,))
+    if cursor.fetchone()[0] > 0:
+        cursor.execute(
+            "UPDATE Manager SET is_leader = %s WHERE ip_addr = %s", (is_leader, ip))
+        return
+    cursor.execute(
+        "INSERT INTO Manager (ip_addr, is_leader) VALUES (%s, %s)", (ip, is_leader))
+    pass

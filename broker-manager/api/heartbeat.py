@@ -24,22 +24,4 @@ def heartbeat_producer(producer_id: str):
     # Set the last heartbeat time in the database
     return {"message": "alive"}
 
-
-@router.put("/broker")
-def heartbeat_broker(broker_id: str):
-    """
-    Endpoint to send heartbeat
-    :return: success message
-    """
-    # Set the last heartbeat time in the database
-    return {"message": "alive"}
-
-
-@router.put("/manager")
-def heartbeat_manager(manager_id: str):
-    """
-    Endpoint to send heartbeat
-    :return: success message
-    """
-    # Set the last heartbeat time in the database
-    return {"message": "alive"}
+# Broker and Manager heartbeats are directly checked in the heartbeat thread

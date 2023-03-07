@@ -61,11 +61,10 @@ CREATE TABLE IF NOT EXISTS Producer (
 
 -- Create Table in postgresql named Manager
 CREATE TABLE IF NOT EXISTS Manager (
-    manager_id CHAR(36) NOT NULL,
     ip_addr TEXT NOT NULL,
     is_leader BOOLEAN NOT NULL DEFAULT FALSE,
     last_timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (manager_id)
+    PRIMARY KEY (ip_addr)
 );

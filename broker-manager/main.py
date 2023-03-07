@@ -1,24 +1,25 @@
-from fastapi import FastAPI, HTTPException
-from uuid import uuid4
-import hashing.hash as HashTable
+from fastapi import FastAPI
 
 from api import consumer, producer, topics, heartbeat, managers, broker
+import utils
 
 app = FastAPI()
 
-app.include_router(consumer.router)
-app.include_router(producer.router)
-app.include_router(broker.router)
-app.include_router(topics.router)
-app.include_router(managers.router)
-app.include_router(heartbeat.router)
 
+utils.claim_existence()
 
-# TODO:
-# Run the Heartbeat Algorithm
+if utils.is_leader:
+    # TODO:
+    # Run the Heartbeat Algorithm in a separate thread
 
-# Leader Manager
-leader_manager = "http://manager2:5000"
+    app.include_router(managers.router)
+    app.include_router(broker.router)
+    app.include_router(topics.router)
+    app.include_router(producer.router)
+    app.include_router(heartbeat.router)
+else:
+    app.include_router(topics.router)
+    app.include_router(consumer.router)
 
 
 @app.get("/")

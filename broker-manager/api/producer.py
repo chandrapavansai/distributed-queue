@@ -47,10 +47,13 @@ async def enqueue(topic: str, producer_id: str, message: str, partition: int = N
     IP_addr = crud.get_broker_ip(broker_num, cursor)
 
     # Send the message to the broker
-    response = requests.post(f"{IP_addr}/messages", json={
-        "topic": topic,
-        "content": message,
-        "partition": partition})
+    try:
+        response = requests.post(f"{IP_addr}/messages", json={
+            "topic": topic,
+            "content": message,
+            "partition": partition})
+    except requests.exceptions.ConnectionError:
+        raise HTTPException(status_code=503, detail="Unable to process request, Broker is not available")
 
     if response.ok:
         crud.increment_size(topic, partition, cursor)

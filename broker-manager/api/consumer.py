@@ -12,7 +12,6 @@ router = APIRouter(
 
 # Path: broker-manager\api\consumer.py
 
-
 @router.get("/consume")
 async def consume(topic: str, consumer_id: str, partition: int = None):
     """
@@ -49,11 +48,14 @@ async def consume(topic: str, consumer_id: str, partition: int = None):
     IP_addr = crud.get_broker_ip(broker_num, cursor)
 
     # Get the message from the broker
-    response = requests.get(f"{IP_addr}/messages", params={
-                            "topic": topic,
-                            "partition": partition,
-                            "offset": offset})
-
+    try:
+        response = requests.get(f"{IP_addr}/messages", params={
+                                "topic": topic,
+                                "partition": partition,
+                                "offset": offset})
+    except requests.exceptions.ConnectionError:
+        raise HTTPException(status_code=503, detail="Unable to process request, Broker is not available")
+    
     if response.ok:
         crud.increment_offset(consumer_id, partition, cursor)
         db.commit()  # Update the round robin partition
