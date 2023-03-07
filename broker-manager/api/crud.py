@@ -408,6 +408,13 @@ def get_producers(cursor):
         "SELECT DISTINCT producer_id FROM Producer")
     return cursor.fetchall()
 
+def delete_manager(url, cursor):
+    if cursor is None:
+        cursor = db.cursor()
+    cursor.execute(
+        "DELETE FROM Manager WHERE url = %s", (url,))
+    pass
+
 
 def delete_consumer(consumer_id, cursor):
     if cursor is None:
@@ -425,6 +432,14 @@ def delete_producer(producer_id, cursor):
     cursor.execute(
         "DELETE FROM Producer WHERE producer_id = %s", (producer_id,))
     pass
+
+
+def get_broker_ids(cursor):
+    if cursor is None:
+        cursor = db.cursor()
+    cursor.execute(
+        "SELECT broker_id FROM Broker")
+    return [x[0] for x in cursor.fetchall()]
 
 
 def get_broker_id_from_topic(topic, partition, cursor=None):

@@ -17,7 +17,7 @@ PASSWORD = os.getenv('DB_PASSWORD') if os.getenv(
     'DB_PASSWORD') is not None else 'postgres'
 HOST = os.getenv('DB_HOST') if os.getenv(
     'DB_HOST') is not None else 'localhost'
-PORT = os.getenv('DB_PORT') if os.getenv('DB_PORT') is not None else '5435'
+PORT = os.getenv('DB_PORT') if os.getenv('DB_PORT') is not None else '5442'
 
 db = psycopg2.connect(database=DATABASE_NAME,
                       host=HOST,
