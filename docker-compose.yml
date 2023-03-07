@@ -40,7 +40,7 @@ services:
 
 # Redis
   redis:
-    image: redis:alpine
+    image: redislabs/rejson:latest
     container_name: redis
     ports:
       - 6379:6379

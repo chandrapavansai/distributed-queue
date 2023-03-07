@@ -1,5 +1,11 @@
-from .service import Service
+import datetime
 
-class BrokerManager(Service):
-    def __init__(self,service_name,service_ip):
-        super().__init__(service_name,service_ip)
+from redis_om import JsonModel,Field
+
+class BrokerManager(JsonModel):
+    live: bool = Field(index=False, default=True)
+    last_heartbeat: datetime.datetime = Field(index=False, default=datetime.datetime.now())  
+
+    def update_heartbeat(self):
+        self.last_heartbeat = datetime.datetime.now()
+        self.save()
