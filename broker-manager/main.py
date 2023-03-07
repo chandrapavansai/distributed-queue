@@ -5,7 +5,6 @@ import utils
 
 app = FastAPI()
 
-
 utils.claim_existence()
 
 if utils.is_leader:
@@ -20,11 +19,6 @@ if utils.is_leader:
 else:
     app.include_router(topics.router)
     app.include_router(consumer.router)
-
-
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
 
 
 @app.get("/ping")

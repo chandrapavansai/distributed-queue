@@ -1,7 +1,7 @@
 -- Create Table in postgresql named Broker
 CREATE TABLE IF NOT EXISTS Broker (
     broker_id INTEGER NOT NULL,
-    ip_addr TEXT NOT NULL,
+    url TEXT NOT NULL,
     last_timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -61,10 +61,10 @@ CREATE TABLE IF NOT EXISTS Producer (
 
 -- Create Table in postgresql named Manager
 CREATE TABLE IF NOT EXISTS Manager (
-    ip_addr TEXT NOT NULL,
+    url TEXT NOT NULL,
     is_leader BOOLEAN NOT NULL DEFAULT FALSE,
     last_timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (ip_addr)
+    PRIMARY KEY (url)
 );

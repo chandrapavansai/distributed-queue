@@ -51,11 +51,11 @@ def get_round_robin_partition_consumer(consumer_id, topic, cursor):
         cursor = db.cursor()
 
     cursor.execute(
-        "SELECT partition_id FROM Consumer WHERE consumer_id = %s", (consumer_id, ))
+        "SELECT partition_id FROM Consumer WHERE consumer_id = %s", (consumer_id,))
     partition = cursor.fetchone()[0]
 
     cursor.execute(
-        "SELECT is_round_robin FROM Consumer WHERE consumer_id = %s", (consumer_id, ))
+        "SELECT is_round_robin FROM Consumer WHERE consumer_id = %s", (consumer_id,))
     is_round_robin = cursor.fetchone()[0]
 
     if not is_round_robin:
@@ -64,14 +64,15 @@ def get_round_robin_partition_consumer(consumer_id, topic, cursor):
     original_partition = partition
 
     cursor.execute(
-        "SELECT COUNT(*) FROM Topic WHERE topic_name = %s", (topic, ))
+        "SELECT COUNT(*) FROM Topic WHERE topic_name = %s", (topic,))
     partition_count = cursor.fetchone()[0]
 
     for i in range(partition_count):
         current_partition = (partition + i) % partition_count
 
         cursor.execute(
-            "SELECT COUNT(*) FROM ConsumerPartition WHERE consumer_id = %s AND partition_id = %s", (consumer_id, current_partition))
+            "SELECT COUNT(*) FROM ConsumerPartition WHERE consumer_id = %s AND partition_id = %s",
+            (consumer_id, current_partition))
         entry = cursor.fetchone()[0]
 
         """
@@ -83,7 +84,8 @@ def get_round_robin_partition_consumer(consumer_id, topic, cursor):
 
         if not entry:
             cursor.execute(
-                "INSERT INTO ConsumerPartition (consumer_id, partition_id) VALUES (%s, %s)", (consumer_id, current_partition))
+                "INSERT INTO ConsumerPartition (consumer_id, partition_id) VALUES (%s, %s)",
+                (consumer_id, current_partition))
 
         # 0-indexed, current position to read from
         offset = get_offset(consumer_id, current_partition, cursor)
@@ -107,7 +109,8 @@ def get_offset(consumer_id, partition, cursor):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute(
-        "SELECT offset_val FROM ConsumerPartition WHERE consumer_id = %s AND partition_id = %s", (consumer_id, partition))
+        "SELECT offset_val FROM ConsumerPartition WHERE consumer_id = %s AND partition_id = %s",
+        (consumer_id, partition))
     offset = cursor.fetchone()
     if offset is None:
         return 0
@@ -126,7 +129,8 @@ def increment_offset(consumer_id, partition, cursor):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute(
-        "UPDATE ConsumerPartition SET offset_val = offset_val + 1 WHERE consumer_id = %s AND partition_id = %s", (consumer_id, partition))
+        "UPDATE ConsumerPartition SET offset_val = offset_val + 1 WHERE consumer_id = %s AND partition_id = %s",
+        (consumer_id, partition))
 
 
 def get_size(topic, partition, cursor):
@@ -147,11 +151,11 @@ def get_related_broker(topic, partition, cursor):
 
 
 # Tested
-def get_broker_ip(broker_num, cursor):
+def get_broker_url(broker_num, cursor):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute(
-        "SELECT ip_addr FROM Broker WHERE broker_id = %s", (broker_num,))
+        "SELECT url FROM Broker WHERE broker_id = %s", (broker_num,))
     return cursor.fetchone()[0]
 
 
@@ -210,11 +214,11 @@ def get_round_robin_partition_producer(producer_id, topic, cursor):
         cursor = db.cursor()
 
     cursor.execute(
-        "SELECT partition_id FROM Producer WHERE producer_id = %s", (producer_id, ))
+        "SELECT partition_id FROM Producer WHERE producer_id = %s", (producer_id,))
     partition = cursor.fetchone()[0]
 
     cursor.execute(
-        "SELECT is_round_robin FROM Producer WHERE producer_id = %s", (producer_id, ))
+        "SELECT is_round_robin FROM Producer WHERE producer_id = %s", (producer_id,))
     is_round_robin = cursor.fetchone()[0]
 
     if not is_round_robin:
@@ -249,39 +253,39 @@ def get_alive_managers(cursor):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute(
-        "SELECT ip_addr, is_leader FROM Manager")
+        "SELECT url, is_leader FROM Manager")
     return cursor.fetchall()
 
 
-def set_consumer_hearbeat(consumer_id, cursor):
+def set_consumer_heartbeat(consumer_id, cursor):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute(
-        "UPDATE Consumer SET last_timestamp = NOW() WHERE consumer_id = %s", (consumer_id, ))
+        "UPDATE Consumer SET last_timestamp = NOW() WHERE consumer_id = %s", (consumer_id,))
     pass
 
 
-def get_consumer_hearbeat(consumer_id, cursor):
+def get_consumer_heartbeat(consumer_id, cursor):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute(
-        "SELECT last_timestamp FROM Consumer WHERE consumer_id = %s", (consumer_id, ))
+        "SELECT last_timestamp FROM Consumer WHERE consumer_id = %s", (consumer_id,))
     return cursor.fetchone()[0]
 
 
-def set_producer_hearbeat(producer_id, cursor):
+def set_producer_heartbeat(producer_id, cursor):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute(
-        "UPDATE Producer SET last_timestamp = NOW() WHERE producer_id = %s", (producer_id, ))
+        "UPDATE Producer SET last_timestamp = NOW() WHERE producer_id = %s", (producer_id,))
     pass
 
 
-def get_producer_hearbeat(producer_id, cursor):
+def get_producer_heartbeat(producer_id, cursor):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute(
-        "SELECT last_timestamp FROM Producer WHERE producer_id = %s", (producer_id, ))
+        "SELECT last_timestamp FROM Producer WHERE producer_id = %s", (producer_id,))
     return cursor.fetchone()[0]
 
 
@@ -311,29 +315,29 @@ def update_partition_broker(broker_id, topic, partition, cursor):
     pass
 
 
-def get_broker_id(ip: str, cursor):
+def get_broker_id(url: str, cursor):
     """
-    Utility function to get the broker id from the ip address
+    Utility function to get the broker id from the url
     returns the broker id
     """
     if cursor is None:
         cursor = db.cursor()
-    cursor.execute("SELECT broker_id FROM Broker WHERE ip_addr = %s", (ip,))
+    cursor.execute("SELECT broker_id FROM Broker WHERE url = %s", (url,))
     return cursor.fetchone()[0]
 
 
-def create_manager(ip: str, is_leader: bool, cursor):
+def create_manager(url: str, is_leader: bool, cursor):
     """
     Utility function to create a manager in the database
     """
     if cursor is None:
         cursor = db.cursor()
     # Check if the manager already exists
-    cursor.execute("SELECT COUNT(*) FROM Manager WHERE ip_addr = %s", (ip,))
+    cursor.execute("SELECT COUNT(*) FROM Manager WHERE url = %s", (url,))
     if cursor.fetchone()[0] > 0:
         cursor.execute(
-            "UPDATE Manager SET is_leader = %s WHERE ip_addr = %s", (is_leader, ip))
+            "UPDATE Manager SET is_leader = %s WHERE url = %s", (is_leader, url))
         return
     cursor.execute(
-        "INSERT INTO Manager (ip_addr, is_leader) VALUES (%s, %s)", (ip, is_leader))
+        "INSERT INTO Manager (url, is_leader) VALUES (%s, %s)", (url, is_leader))
     pass

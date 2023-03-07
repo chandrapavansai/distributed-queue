@@ -5,21 +5,14 @@ from database import db
 
 
 # utility functions for using the hash ring
-def get_active_brokers():
-    """
-    Utility function to return the id's of active brokers
-    returns a list of active broker id's
-    """
-    cursor = db.cursor()
+def get_active_brokers(cursor=None):
+    if cursor is None:
+        cursor = db.cursor()
     cursor.execute("SELECT DISTINCT broker_id FROM Broker")
-    return [id[0] for id in cursor.fetchall()]
+    return [broker_id[0] for broker_id in cursor.fetchall()]
 
 
-def add_broker(ip: str, cursor):
-    """
-    Utility function to add the new broker to the hash ring
-    :param ip : ip address of the new broker 
-    """
+def add_broker(url: str, cursor=None):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute("SELECT MAX(broker_id) FROM Broker")
@@ -29,15 +22,11 @@ def add_broker(ip: str, cursor):
     else:
         id += 1
     cursor.execute(
-        "INSERT INTO Broker (broker_id, ip_addr) VALUES (%s, %s)", (id, ip,))
+        "INSERT INTO Broker (broker_id, url) VALUES (%s, %s)", (id, url,))
     return id
 
 
-def remove_brokers(remove_ids_list: list, cursor):
-    """
-    Utility function to remove an existing broker from the hash ring
-    :param ip : ip address of the broker to be removed 
-    """
+def remove_brokers(remove_ids_list: list, cursor=None):
     if cursor is None:
         cursor = db.cursor()
     active_brokers = get_active_brokers()
@@ -60,7 +49,7 @@ def remove_brokers(remove_ids_list: list, cursor):
 
     # Do not delete partition details, as it is used in other tables
     for topic, partition in transfer_list:
-        new_broker_id = active_brokers[random.randint(0, no_of_brokers-1)]
+        new_broker_id = active_brokers[random.randint(0, no_of_brokers - 1)]
         crud.update_partition_broker(new_broker_id, topic, partition, cursor)
 
     for id in remove_ids_list:
@@ -69,11 +58,12 @@ def remove_brokers(remove_ids_list: list, cursor):
     return no_of_brokers
 
 
-def assign_broker_to_new_partition(topic: str, partition: int, cursor):
+def assign_broker_to_new_partition(topic: str, partition: int, cursor=None):
     """
     Endpoint to create a partition for a topic
     :param topic: name of the topic
     :param partition: partition number
+    :param cursor: database cursor
     :return: assigned broker id
     """
     active_brokers = get_active_brokers()

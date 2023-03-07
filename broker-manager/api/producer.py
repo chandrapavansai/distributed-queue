@@ -1,14 +1,15 @@
 from uuid import uuid4
 
-from . import crud
 import requests
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, status
 
+from . import crud
 from database import db
 
 router = APIRouter(
     prefix="/producer",
 )
+
 
 # Path: broker-manager\api\producer.py
 
@@ -20,6 +21,8 @@ async def enqueue(topic: str, producer_id: str, message: str, partition: int = N
     :param topic: the topic to which the producer wants to enqueue
     :param producer_id: producer id obtained while registering
     :param message: log message to be enqueued
+    :param partition: partition number to which the message is to be enqueued
+    :return: success message
     """
 
     # NOTE:
@@ -28,11 +31,11 @@ async def enqueue(topic: str, producer_id: str, message: str, partition: int = N
     cursor = db.cursor()
 
     if not crud.producer_exists(producer_id, cursor):
-        raise HTTPException(status_code=404, detail="Producer does not exist")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producer does not exist")
 
     if not crud.topic_registered_producer(producer_id, topic, cursor):
         raise HTTPException(
-            status_code=403, detail="Producer is not registered to this topic")
+            status_code=status.HTTP_403_FORBIDDEN, detail="Producer is not registered to this topic")
 
     if partition is None:
         # Get the partition number from the database and do Round Robin, and set the next partition
@@ -40,28 +43,29 @@ async def enqueue(topic: str, producer_id: str, message: str, partition: int = N
             producer_id, topic, cursor)
 
     if not crud.partition_exists(topic, partition, cursor):
-        raise HTTPException(status_code=404, detail="Partition does not exist")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Partition does not exist")
 
     # Get the broker for the topic and partition
     broker_num = crud.get_related_broker(topic, partition, cursor)
-    IP_addr = crud.get_broker_ip(broker_num, cursor)
+    broker_url = crud.get_broker_url(broker_num, cursor)
 
     # Send the message to the broker
     try:
-        response = requests.post(f"{IP_addr}/messages", json={
+        response = requests.post(f"{broker_url}/messages", json={
             "topic": topic,
             "content": message,
             "partition": partition})
     except requests.exceptions.ConnectionError:
-        raise HTTPException(status_code=503, detail="Unable to process request, Broker is not available")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail="Unable to process request, Broker is not available")
 
     if response.ok:
         crud.increment_size(topic, partition, cursor)
-        db.commit()  # Update the round robin partition
+        db.commit()  # Update the round-robin partition
         return response.json()
     else:
         raise HTTPException(status_code=response.status_code,
-                            detail=response.json())
+                            detail=response.json()['detail'])
 
 
 @router.post("/register")
@@ -69,6 +73,7 @@ async def register_producer(topic: str, partition: int = None):
     """
     Endpoint to register a producer for a topic
     :param topic: the topic to which the producer wants to publish
+    :param partition: the partition to which the producer wants to publish
     :return: producer id
     """
 
@@ -80,7 +85,7 @@ async def register_producer(topic: str, partition: int = None):
     cursor = db.cursor()
 
     if not crud.topic_exists(topic, cursor):
-        raise HTTPException(status_code=404, detail="Topic does not exist")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic does not exist")
 
     is_round_robin = partition is None
     if partition is None:
@@ -88,7 +93,7 @@ async def register_producer(topic: str, partition: int = None):
 
     if not crud.partition_exists(topic, partition, cursor):
         raise HTTPException(
-            status_code=404, detail="Partition does not exist")
+            status_code=status.HTTP_404_NOT_FOUND, detail="Partition does not exist")
 
     crud.register_producer(producer_id, topic, partition,
                            is_round_robin, cursor)

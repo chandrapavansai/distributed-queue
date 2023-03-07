@@ -1,7 +1,7 @@
 from database import db
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, status
 
-import hashing.hash as Hash
+import hashing
 from . import crud
 
 router = APIRouter(
@@ -28,15 +28,13 @@ def list_topics():
         ]
     }
 
-    # No need to commit as we are not changing anything
-    # db.commit()
 
-
-@router.post("/")
-def create_topic(name: str, partition_count: int = 1):
+@router.post("/", status_code=status.HTTP_201_CREATED)
+def create_topic(name: str, partitions: int = 1):
     """
     Endpoint to create a topic
     :param name: name of the topic
+    :param partitions: number of partitions
     :return: success message
     """
 
@@ -46,22 +44,19 @@ def create_topic(name: str, partition_count: int = 1):
 
     if crud.topic_exists(name, cursor):
         raise HTTPException(
-            status_code=400, detail="Topic with that name already exists")
+            status_code=status.HTTP_409_CONFLICT, detail="Topic with that name already exists")
 
-    for i in range(partition_count):
-        Hash.assign_broker_to_new_partition(name, i, cursor)
+    for i in range(partitions):
+        hashing.assign_broker_to_new_partition(name, i, cursor)
 
     db.commit()
 
-    return {"message": "Topic created successfully"}
 
-
-@router.post("/partitions")
+@router.post("/partitions", status_code=status.HTTP_201_CREATED)
 def create_partition(topic: str):
     """
     Endpoint to create a partition for a topic
     :param topic: name of the topic
-    :param partition: partition number
     :return: success message
     """
 
@@ -70,16 +65,10 @@ def create_partition(topic: str):
 
     if not crud.topic_exists(topic, cursor):
         raise HTTPException(
-            status_code=400, detail="Topic with that name does not exist")
-    
+            status_code=status.HTTP_409_CONFLICT, detail="Topic with that name does not exist")
+
     new_partition = crud.get_partition_count(topic, cursor)
 
-    if crud.partition_exists(topic, new_partition, cursor):
-        raise HTTPException(
-            status_code=400, detail="Partition with that ID already exists")
-    
-    Hash.assign_broker_to_new_partition(topic, new_partition, cursor)
+    hashing.assign_broker_to_new_partition(topic, new_partition, cursor)
 
     db.commit()
-
-    return {"message": "Partition created successfully"}

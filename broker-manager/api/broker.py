@@ -1,6 +1,6 @@
-import hashing.hash as Hash
+import hashing
 from database import db
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from . import crud
 
@@ -21,8 +21,8 @@ def list_brokers():
         "brokers": [
             {
                 "id": broker_id,
-                "ip": crud.get_broker_ip(broker_id, cursor)
-            } for broker_id in Hash.get_active_brokers()
+                "url": crud.get_broker_url(broker_id, cursor)
+            } for broker_id in hashing.get_active_brokers()
         ]
     }
 
@@ -31,7 +31,7 @@ def list_brokers():
 
 
 @router.post("/")
-def create_broker(ip_addr: str):
+def create_broker(url: str):
     """
     Endpoint to create a broker
     :return: success message
@@ -39,7 +39,7 @@ def create_broker(ip_addr: str):
     # Need to be a leader broker manager
     # Add the broker to the database
     cursor = db.cursor()
-    new_broker_id = Hash.add_broker(ip_addr, cursor)
+    new_broker_id = hashing.add_broker(url, cursor)
     db.commit()
     return {"message": "Broker created", "new_id": new_broker_id}
 
@@ -53,7 +53,7 @@ def delete_broker(id: int):
     # Need to be a leader broker manager
     # Add the broker to the database
     cursor = db.cursor()
-    ip_addr = crud.get_broker_ip(id, cursor)
-    cur_size = Hash.remove_brokers([id,], cursor)
+    url = crud.get_broker_url(id, cursor)
+    cur_size = hashing.remove_brokers([id, ], cursor)
     db.commit()
-    return {"message": "Broker deleted", "ip": ip_addr, "current_count": cur_size}
+    return {"message": "Broker deleted", "url": url, "current_count": cur_size}
