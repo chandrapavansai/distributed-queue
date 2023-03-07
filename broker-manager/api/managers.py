@@ -1,5 +1,6 @@
 from database import db
 from fastapi import APIRouter
+import utils
 
 from . import crud
 
@@ -13,7 +14,7 @@ def get_managers():
 
     cursor = db.cursor()
     return {
-        "managers": crud.get_alive_managers(cursor)
+        "managers": crud.get_alive_managers(cursor),
     }
 
     # No need to commit as we are not changing anything

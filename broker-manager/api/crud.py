@@ -104,6 +104,44 @@ def get_round_robin_partition_consumer(consumer_id, topic, cursor):
     return original_partition
 
 
+def partition_registered_consumer(consumer_id, topic, partition, cursor):
+    if cursor is None:
+        cursor = db.cursor()
+    # Check if registered to round robin
+    cursor.execute(
+        "SELECT is_round_robin FROM Consumer WHERE consumer_id = %s", (consumer_id,))
+    is_round_robin = cursor.fetchone()[0]
+    if partition is None:
+        return is_round_robin
+
+    if is_round_robin:
+        return True
+    # Select partition from consumer
+    cursor.execute(
+        "SELECT partition_id FROM Consumer WHERE consumer_id = %s", (consumer_id,))
+    consumer_partition = cursor.fetchone()[0]
+    return consumer_partition == partition
+
+
+def partition_registered_producer(producer_id, topic, partition, cursor):
+    if cursor is None:
+        cursor = db.cursor()
+    # Check if registered to round robin
+    cursor.execute(
+        "SELECT is_round_robin FROM Producer WHERE producer_id = %s", (producer_id,))
+    is_round_robin = cursor.fetchone()[0]
+    if partition is None:
+        return is_round_robin
+
+    if is_round_robin:
+        return True
+    # Select partition from producer
+    cursor.execute(
+        "SELECT partition_id FROM Producer WHERE producer_id = %s", (producer_id,))
+    producer_partition = cursor.fetchone()[0]
+    return producer_partition == partition
+
+
 # Tested
 def get_offset(consumer_id, partition, cursor):
     if cursor is None:
@@ -129,8 +167,17 @@ def increment_offset(consumer_id, partition, cursor):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute(
-        "UPDATE ConsumerPartition SET offset_val = offset_val + 1 WHERE consumer_id = %s AND partition_id = %s",
+        "SELECT COUNT(*) FROM ConsumerPartition WHERE consumer_id = %s AND partition_id = %s",
         (consumer_id, partition))
+    entry = cursor.fetchone()[0]
+    if not entry:
+        cursor.execute(
+            "INSERT INTO ConsumerPartition (consumer_id, partition_id, offset_val) VALUES (%s, %s, 1)",
+            (consumer_id, partition))
+    else:
+        cursor.execute(
+            "UPDATE ConsumerPartition SET offset_val = offset_val + 1 WHERE consumer_id = %s AND partition_id = %s",
+            (consumer_id, partition))
 
 
 def get_size(topic, partition, cursor):
@@ -156,7 +203,10 @@ def get_broker_url(broker_num, cursor):
         cursor = db.cursor()
     cursor.execute(
         "SELECT url FROM Broker WHERE broker_id = %s", (broker_num,))
-    return cursor.fetchone()[0]
+    url = cursor.fetchone()
+    if url is None:
+        return "localghost"
+    return url[0]
 
 
 # Tested
@@ -341,3 +391,54 @@ def create_manager(url: str, is_leader: bool, cursor):
     cursor.execute(
         "INSERT INTO Manager (url, is_leader) VALUES (%s, %s)", (url, is_leader))
     pass
+
+
+def get_consumers(cursor):
+    if cursor is None:
+        cursor = db.cursor()
+    cursor.execute(
+        "SELECT DISTINCT consumer_id FROM Consumer")
+    return cursor.fetchall()
+
+
+def get_producers(cursor):
+    if cursor is None:
+        cursor = db.cursor()
+    cursor.execute(
+        "SELECT DISTINCT producer_id FROM Producer")
+    return cursor.fetchall()
+
+
+def delete_consumer(consumer_id, cursor):
+    if cursor is None:
+        cursor = db.cursor()
+    cursor.execute(
+        "DELETE FROM ConsumerPartition WHERE consumer_id = %s", (consumer_id,))
+    cursor.execute(
+        "DELETE FROM Consumer WHERE consumer_id = %s", (consumer_id,))
+    pass
+
+
+def delete_producer(producer_id, cursor):
+    if cursor is None:
+        cursor = db.cursor()
+    cursor.execute(
+        "DELETE FROM Producer WHERE producer_id = %s", (producer_id,))
+    pass
+
+
+def get_broker_id_from_topic(topic, partition, cursor=None):
+    if cursor is None:
+        cursor = db.cursor()
+    cursor.execute(
+        "SELECT broker_id FROM Topic WHERE topic_name = %s AND partition_id = %s", (topic, partition))
+    return cursor.fetchone()[0]
+
+
+# Delete order matters
+# ("DELETE FROM Manager")
+# ("DELETE FROM Producer") -> Producer has a foreign key to Topic
+# ("DELETE FROM ConsumerPartition") -> ConsumerPartition has a foreign key to Consumer
+# ("DELETE FROM Consumer") -> Consumer has a foreign key to Topic
+# ("DELETE FROM Topic") -> Topic has a foreign key to Broker
+# ("DELETE FROM Broker")

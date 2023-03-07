@@ -29,7 +29,8 @@ async def consume(topic: str, consumer_id: str, partition: int = None):
     cursor = db.cursor()
 
     if not crud.consumer_exists(consumer_id, cursor):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Consumer does not exist")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Consumer does not exist")
 
     if not crud.topic_registered_consumer(consumer_id, topic, cursor):
         raise HTTPException(
@@ -40,8 +41,13 @@ async def consume(topic: str, consumer_id: str, partition: int = None):
         partition = crud.get_round_robin_partition_consumer(
             consumer_id, topic, cursor)
 
+    if not crud.partition_registered_consumer(consumer_id, topic, partition, cursor):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Consumer is not registered to this partition")
+
     if not crud.partition_exists(topic, partition, cursor):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Partition does not exist")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Partition does not exist")
 
     offset = crud.get_offset(consumer_id, partition, cursor)
 
@@ -86,14 +92,16 @@ def register_consumer(topic: str, partition: int = None):
     consumer_id = str(uuid4())
 
     if not crud.topic_exists(topic, cursor):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic does not exist")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Topic does not exist")
 
     is_round_robin = partition is None
     if partition is None:
         partition = 0
 
     if not crud.partition_exists(topic, partition, cursor):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Partition does not exist")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Partition does not exist")
 
     crud.register_consumer(consumer_id, topic, partition,
                            is_round_robin, cursor)
@@ -117,11 +125,16 @@ async def size(consumer_id: str, topic: str, partition: int = None):
     cursor = db.cursor()
 
     if not crud.consumer_exists(consumer_id, cursor):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Consumer does not exist")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Consumer does not exist")
 
     if not crud.topic_registered_consumer(consumer_id, topic, cursor):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Consumer is not registered to this topic")
+
+    if not crud.partition_registered_consumer(consumer_id, topic, partition, cursor):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Consumer is not registered to this partition")
 
     if partition is None:
         # Get messages to read from all partitions
@@ -130,13 +143,14 @@ async def size(consumer_id: str, topic: str, partition: int = None):
         for partition in partitions:
             q_size += crud.get_size(topic, partition, cursor)
             q_size -= crud.get_offset(consumer_id, partition, cursor)
-        return q_size
+        return {"size": q_size}
 
     if not crud.partition_exists(topic, partition, cursor):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Partition does not exist")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Partition does not exist")
 
     q_size = crud.get_size(topic, partition, cursor)
     offset = crud.get_offset(consumer_id, partition, cursor)
 
     # No need to commit as we are not updating anything
-    return q_size - offset
+    return {"size": q_size - offset}

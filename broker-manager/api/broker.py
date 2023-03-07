@@ -1,6 +1,6 @@
 import hashing
 from database import db
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from . import crud
 
@@ -55,5 +55,7 @@ def delete_broker(id: int):
     cursor = db.cursor()
     url = crud.get_broker_url(id, cursor)
     cur_size = hashing.remove_brokers([id, ], cursor)
+    if cur_size == -1:
+        raise HTTPException(status_code=404, detail="Broker not found")
     db.commit()
     return {"message": "Broker deleted", "url": url, "current_count": cur_size}

@@ -50,6 +50,7 @@ def create_topic(name: str, partitions: int = 1):
         hashing.assign_broker_to_new_partition(name, i, cursor)
 
     db.commit()
+    return {"message": "Topic created"}
 
 
 @router.post("/partitions", status_code=status.HTTP_201_CREATED)
@@ -72,3 +73,4 @@ def create_partition(topic: str):
     hashing.assign_broker_to_new_partition(topic, new_partition, cursor)
 
     db.commit()
+    return {"message": "Partition created", "partition": new_partition}

@@ -15,6 +15,11 @@ def get_active_brokers(cursor=None):
 def add_broker(url: str, cursor=None):
     if cursor is None:
         cursor = db.cursor()
+    # Check if broker already exists
+    cursor.execute("SELECT broker_id FROM Broker WHERE url = %s", (url,))
+    broker_id = cursor.fetchone()
+    if broker_id is not None:
+        return broker_id[0]
     cursor.execute("SELECT MAX(broker_id) FROM Broker")
     id = cursor.fetchone()[0]
     if id is None:

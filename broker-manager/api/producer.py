@@ -13,7 +13,7 @@ from topic_locks import get_lock
 router = APIRouter(prefix="/producer")
 
 
-@router.get("/produce")
+@router.post("/produce")
 async def enqueue(topic: str, producer_id: str, message: str, partition: int = None):
     """
     Endpoint to enqueue a message to the queue
@@ -40,6 +40,10 @@ async def enqueue(topic: str, producer_id: str, message: str, partition: int = N
             # Get the partition number from the database and do Round Robin, and set the next partition
             partition = crud.get_round_robin_partition_producer(
                 producer_id, topic, cursor)
+            
+        if not crud.partition_registered_producer(producer_id, topic, partition, cursor):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Producer is not registered to this partition")
 
         if not crud.partition_exists(topic, partition, cursor):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Partition does not exist")
