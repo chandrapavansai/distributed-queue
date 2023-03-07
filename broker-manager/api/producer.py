@@ -84,7 +84,8 @@ async def register_producer(topic: str, partition: int = None):
     cursor = db.cursor()
 
     if not crud.topic_exists(topic, cursor):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic does not exist")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Topic does not exist")
 
     is_round_robin = partition is None
     if partition is None:
