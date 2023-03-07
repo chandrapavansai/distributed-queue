@@ -1,17 +1,19 @@
-from connection import Connection
 from typing import Dict
 import threading
 from time import sleep
+
+from connection import Connection
+from topic import Topic
 
 
 class TopicProducer:
     PING_FREQUENCY = 10
 
-    def __init__(self, topic: str, connection: Connection):
+    def __init__(self, topic: Topic, connection: Connection):
         self.topic = topic
         self.connection = connection
 
-        res = connection.post('/producer/register', params={'topic': topic})
+        res = connection.post('/producer/register', params=topic.dict())
         if not res.ok:
             raise Exception('Error while registering topic')
         self._prod_id = res.json()['producer_id']
@@ -20,13 +22,13 @@ class TopicProducer:
 
     def send_message(self, message: str):
         res = self.connection.post('/producer/produce',
-                                   params={'topic': self.topic, 'producer_id': self._prod_id, 'message': message})
+                                   params={**self.topic.dict(), 'producer_id': self._prod_id, 'message': message})
         if not res.ok:
             raise Exception('Error while sending message', res.json())
 
     def _worker_routine(self):
         while not self._stop_thread:
-            self.connection.get('/consumer/ping')
+            self.connection.get('/ping', params={'producer_id': self._prod_id})
             sleep(1 / self.PING_FREQUENCY)
 
     def __del__(self):
@@ -35,7 +37,7 @@ class TopicProducer:
 
 
 class Producer:
-    def __init__(self, topics: list[str], connection: Connection):
+    def __init__(self, topics: list[Topic], connection: Connection):
         """Constructor for Producer class   
 
         Args:
@@ -45,11 +47,11 @@ class Producer:
         # Check if / is present at the end of broker
 
         self.connection = connection
-        self._producers: Dict[str, TopicProducer] = dict()
+        self._producers: Dict[Topic, TopicProducer] = dict()
         for topic in topics:
             self.register_topic(topic)
 
-    def register_topic(self, topic: str):
+    def register_topic(self, topic: Topic):
         """Function to register a topic
 
         Args:
@@ -60,7 +62,7 @@ class Producer:
         """
         self._producers[topic] = TopicProducer(topic, self.connection)
 
-    def send_message(self, topic: str, message: str):
+    def send_message(self, topic: Topic, message: str):
         """Function to send a message to a topic
 
         Args:
