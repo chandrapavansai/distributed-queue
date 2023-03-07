@@ -52,7 +52,7 @@ def remove_brokers(list_ids: list):
 
     transfer_list = []
     for id in list_ids:
-        cursor.execute("SELECT topic_name, parition_num FROM Topic WHERE broker_id = %s", (id,))
+        cursor.execute("SELECT topic_name, partition_num FROM Topic WHERE broker_id = %s", (id,))
         for topic, partition in cursor.fetchall():
             transfer_list.append(tuple(topic, partition))
 
@@ -61,7 +61,7 @@ def remove_brokers(list_ids: list):
 
     for topic, partition in transfer_list:
         new_broker_id = active_brokers[random.randint(0,no_of_brokers-1)]
-        crud.insert_parition_broker(topic, partition, new_broker_id)
+        crud.insert_partition_broker(topic, partition, new_broker_id)
     
     for id in list_ids:
         cursor.execute("DELETE FROM Broker WHERE broker_id = %s", (id,))
@@ -70,30 +70,30 @@ def remove_brokers(list_ids: list):
     
 
 
-def assign_broker_to_new_parition(topic: str, partition: int):
+def assign_broker_to_new_partition(topic: str, partition: int):
     """
-    Endpoint to create a parition for a topic
+    Endpoint to create a partition for a topic
     :param topic: name of the topic
-    :param parition: parition number
+    :param partition: partition number
     :return: assigned broker id
     """
     active_brokers = active()
     cursor = db.cursor()
     no_of_brokers = len(active_brokers)
     new_broker_id = active_brokers[random.randint(0,no_of_brokers-1)]
-    crud.insert_parition_broker(topic, partition, new_broker_id)
+    crud.insert_partition_broker(topic, partition, new_broker_id)
 
 
 
-def get_round_robin_parition_consumer(consumer_id, topic):
+def get_round_robin_partition_consumer(consumer_id, topic):
     cursor = db.cursor()
     i = 0
     cursor.execute("SELECT COUNT(*) FROM Topic WHERE topic_id = %s", (topic,))
     size = cursor.fetchone()[0]
-    cursor.execute("SELECT parition_id FROM Consumer WHERE consumer_id = %s", (consumer_id,))
+    cursor.execute("SELECT partition_id FROM Consumer WHERE consumer_id = %s", (consumer_id,))
     partition = cursor.fetchone()[0]
     while 1:
-        cursor.execute("SELECT offset_val FROM ConsumerPartition WHERE consumer_id = %s AND parition_id = %s", (consumer_id, (partition+i)%size,))
+        cursor.execute("SELECT offset_val FROM ConsumerPartition WHERE consumer_id = %s AND partition_id = %s", (consumer_id, (partition+i)%size,))
         offset = cursor.fetchone()[0]
         max_offset = 0
         if offset != max_offset: 

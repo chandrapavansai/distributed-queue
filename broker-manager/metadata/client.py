@@ -47,7 +47,7 @@ class Client(Partition):
         # Get current partition index
         partition_idx = self.get_curr_partition_round_robin(topic_id)
         # Get partition list
-        partition_list = self.get_gobal_topic_partition(topic_id)
+        partition_list = self.get_global_topic_partition(topic_id)
 
         # Get next partition index
         partition_idx = (partition_idx + 1) % len(partition_list)

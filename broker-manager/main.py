@@ -25,13 +25,13 @@ app.include_router(heartbeat.router)
 """
 Manage the data:
 1. Clients:
-    - Current Parition w.r.t to the topic - For Round Robin
+    - Current Partition w.r.t to the topic - For Round Robin
     - Last fetched offset
     - Alive or not
 
 2. Brokers:
     - List of live brokers
-    - Hash table of topic parition to broker mapping
+    - Hash table of topic partition to broker mapping
 """
 
 """
@@ -110,7 +110,7 @@ brokers_table = [
 #     broker_ip_to_id[brokers_table[i]["IP_addr"]] = i
 
 
-topic_parition_to_broker_table = {
+topic_partition_to_broker_table = {
     "topic1": {
         1: 0,   # Broker 0
         2: 1    # Broker 1
@@ -124,7 +124,7 @@ topic_parition_to_broker_table = {
 
 # datastructures and utility functions for implementing round robin broker selection
 # cur_broker_id = {}
-# for topic in topic_parition_to_broker_table:
+# for topic in topic_partition_to_broker_table:
 #     cur_broker_id[topic] = 0
 
 
@@ -133,12 +133,12 @@ leader_manager = "http://manager2:5000"
 
 
 # TODO: Consistent hashing algorithm
-# Assign broker to new parition
-def assign_broker_to_new_parition(topic: str, partition: int):
+# Assign broker to new partition
+def assign_broker_to_new_partition(topic: str, partition: int):
     """
-    Endpoint to create a parition for a topic
+    Endpoint to create a partition for a topic
     :param topic: name of the topic
-    :param parition: parition number
+    :param partition: partition number
     :return: assigned broker id
     """
     # key = topic + "###" + str(partition)
@@ -161,12 +161,12 @@ def ping():
 
 
 @app.get("/size")
-async def size(topic: str, consumer_id: str, parition: int = None):
+async def size(topic: str, consumer_id: str, partition: int = None):
     """
     Endpoint to get the size of the queue for a given topic
     :param topic: the topic for which the size is to be obtained
     :param consumer_id: consumer id obtained while registering
-    :param parition: parition number
+    :param partition: partition number
     :return: size of the queue
     """
     pass

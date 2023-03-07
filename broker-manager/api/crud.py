@@ -20,12 +20,12 @@ def get_topics(cursor):
 
 
 # Tested
-def get_paritions(topic, cursor):
+def get_partitions(topic, cursor):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute(
-        "SELECT parition_id FROM Topic WHERE topic_name = %s", (topic,))
-    return [parition[0] for parition in cursor.fetchall()]
+        "SELECT partition_id FROM Topic WHERE topic_name = %s", (topic,))
+    return [partition[0] for partition in cursor.fetchall()]
 
 
 # Tested
@@ -38,51 +38,51 @@ def topic_registered_consumer(consumer_id, topic, cursor):
 
 
 # Partially Tested
-def get_round_robin_parition_consumer(consumer_id, topic, cursor):
+def get_round_robin_partition_consumer(consumer_id, topic, cursor):
     if cursor is None:
         cursor = db.cursor()
 
     cursor.execute(
-        "SELECT parition_id FROM Consumer WHERE consumer_id = %s", (consumer_id, ))
-    parition = cursor.fetchone()[0]
+        "SELECT partition_id FROM Consumer WHERE consumer_id = %s", (consumer_id, ))
+    partition = cursor.fetchone()[0]
 
     cursor.execute(
         "SELECT is_round_robin FROM Consumer WHERE consumer_id = %s", (consumer_id, ))
     is_round_robin = cursor.fetchone()[0]
 
     if not is_round_robin:
-        return parition
+        return partition
 
-    original_parition = parition
+    original_partition = partition
 
     cursor.execute(
         "SELECT COUNT(*) FROM Topic WHERE topic_name = %s", (topic, ))
-    parition_count = cursor.fetchone()[0]
+    partition_count = cursor.fetchone()[0]
 
-    parition = (parition + 1) % parition_count
+    partition = (partition + 1) % partition_count
 
-    # Set the new parition
+    # Set the new partition
     cursor.execute(
-        "UPDATE ConsumerPartition SET parition_id = %s WHERE consumer_id = %s", (parition, consumer_id))
+        "UPDATE ConsumerPartition SET partition_id = %s WHERE consumer_id = %s", (partition, consumer_id))
 
-    return original_parition
+    return original_partition
 
 
 # Tested
-def get_offset(consumer_id, parition, cursor):
+def get_offset(consumer_id, partition, cursor):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute(
-        "SELECT offset_val FROM ConsumerPartition WHERE consumer_id = %s AND parition_id = %s", (consumer_id, parition))
+        "SELECT offset_val FROM ConsumerPartition WHERE consumer_id = %s AND partition_id = %s", (consumer_id, partition))
     return cursor.fetchone()[0]
 
 
 # Tested
-def get_related_broker(topic, parition, cursor):
+def get_related_broker(topic, partition, cursor):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute(
-        "SELECT broker_id FROM Topic WHERE topic_name = %s AND parition_id = %s", (topic, parition))
+        "SELECT broker_id FROM Topic WHERE topic_name = %s AND partition_id = %s", (topic, partition))
     return cursor.fetchone()[0]
 
 
@@ -105,24 +105,24 @@ def topic_exists(topic_name, cursor):
 
 
 # Tested
-def parition_exists(topic, parition, cursor):
+def partition_exists(topic, partition, cursor):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute(
-        "SELECT COUNT(*) FROM Topic WHERE topic_name = %s AND parition_id = %s", (topic, parition))
+        "SELECT COUNT(*) FROM Topic WHERE topic_name = %s AND partition_id = %s", (topic, partition))
     return cursor.fetchone()[0] > 0
 
 
 # Tested
-def register_consumer(consumer_id, topic, parition, is_round_robin, cursor):
+def register_consumer(consumer_id, topic, partition, is_round_robin, cursor):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute(
-        "INSERT INTO Consumer (consumer_id, topic_name, parition_id, is_round_robin) \
-            VALUES (%s, %s, %s, %s)", (consumer_id, topic, parition, is_round_robin))
+        "INSERT INTO Consumer (consumer_id, topic_name, partition_id, is_round_robin) \
+            VALUES (%s, %s, %s, %s)", (consumer_id, topic, partition, is_round_robin))
     cursor.execute(
-        "INSERT INTO ConsumerPartition (consumer_id, parition_id, offset_val) \
-            VALUES (%s, %s, %s)", (consumer_id, parition, 0))
+        "INSERT INTO ConsumerPartition (consumer_id, partition_id, offset_val) \
+            VALUES (%s, %s, %s)", (consumer_id, partition, 0))
     pass
 
 
@@ -145,40 +145,40 @@ def topic_registered_producer(producer_id, topic, cursor):
 
 
 # Partially Tested
-def get_round_robin_parition_producer(producer_id, topic, cursor):
+def get_round_robin_partition_producer(producer_id, topic, cursor):
     if cursor is None:
         cursor = db.cursor()
 
     cursor.execute(
-        "SELECT parition_id FROM Producer WHERE producer_id = %s", (producer_id, ))
-    parition = cursor.fetchone()[0]
+        "SELECT partition_id FROM Producer WHERE producer_id = %s", (producer_id, ))
+    partition = cursor.fetchone()[0]
 
     cursor.execute(
         "SELECT is_round_robin FROM Producer WHERE producer_id = %s", (producer_id, ))
     is_round_robin = cursor.fetchone()[0]
 
     if not is_round_robin:
-        return parition
+        return partition
 
     cursor.execute(
         "SELECT COUNT(*) FROM Topic WHERE topic_name = %s", (topic,))
-    parition_count = cursor.fetchone()[0]
-    parition = (parition + 1) % parition_count
+    partition_count = cursor.fetchone()[0]
+    partition = (partition + 1) % partition_count
 
-    # Set the new parition
+    # Set the new partition
     cursor.execute(
-        "UPDATE Producer SET parition_id = %s WHERE producer_id = %s", (parition, producer_id))
+        "UPDATE Producer SET partition_id = %s WHERE producer_id = %s", (partition, producer_id))
 
-    return parition
+    return partition
 
 
 # Tested
-def register_producer(producer_id, topic, parition, is_round_robin, cursor):
+def register_producer(producer_id, topic, partition, is_round_robin, cursor):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute(
-        "INSERT INTO Producer (producer_id, topic_name, parition_id, is_round_robin) \
-            VALUES (%s, %s, %s, %s)", (producer_id, topic, parition, is_round_robin))
+        "INSERT INTO Producer (producer_id, topic_name, partition_id, is_round_robin) \
+            VALUES (%s, %s, %s, %s)", (producer_id, topic, partition, is_round_robin))
     pass
 
 
@@ -227,25 +227,25 @@ def get_broker_partitions(broker_id, cursor):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute(
-        "SELECT topic_name, parition_id FROM Topic WHERE broker_id = %s", (broker_id,))
+        "SELECT topic_name, partition_id FROM Topic WHERE broker_id = %s", (broker_id,))
     return cursor.fetchall()
 
 
 # Tested
-def set_partition_broker(broker_id, topic, parition, cursor):
+def set_partition_broker(broker_id, topic, partition, cursor):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute(
-        "INSERT INTO Topic (broker_id, topic_name, parition_id) VALUES (%s, %s, %s)", (broker_id, topic, parition))
+        "INSERT INTO Topic (broker_id, topic_name, partition_id) VALUES (%s, %s, %s)", (broker_id, topic, partition))
     pass
 
 
 # Tested
-def update_partition_broker(broker_id, topic, parition, cursor):
+def update_partition_broker(broker_id, topic, partition, cursor):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute(
-        "UPDATE Topic SET broker_id = %s WHERE topic_name = %s AND parition_id = %s", (broker_id, topic, parition))
+        "UPDATE Topic SET broker_id = %s WHERE topic_name = %s AND partition_id = %s", (broker_id, topic, partition))
     pass
 
 

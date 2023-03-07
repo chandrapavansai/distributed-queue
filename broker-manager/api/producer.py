@@ -14,7 +14,7 @@ router = APIRouter(
 
 
 @router.get("/produce")
-async def enqueue(topic: str, producer_id: str, message: str, parition: int = None):
+async def enqueue(topic: str, producer_id: str, message: str, partition: int = None):
     """
     Endpoint to enqueue a message to the queue
     :param topic: the topic to which the producer wants to enqueue
@@ -34,25 +34,25 @@ async def enqueue(topic: str, producer_id: str, message: str, parition: int = No
         raise HTTPException(
             status_code=403, detail="Producer is not registered to this topic")
 
-    if parition is None:
-        # Get the parition number from the database and do Round Robin, and set the next parition
-        parition = crud.get_round_robin_parition_producer(
+    if partition is None:
+        # Get the partition number from the database and do Round Robin, and set the next partition
+        partition = crud.get_round_robin_partition_producer(
             producer_id, topic, cursor)
 
-    if not crud.parition_exists(topic, parition, cursor):
-        raise HTTPException(status_code=404, detail="Parition does not exist")
+    if not crud.partition_exists(topic, partition, cursor):
+        raise HTTPException(status_code=404, detail="Partition does not exist")
 
-    # Get the broker for the topic and parition
-    broker_num = crud.get_related_broker(topic, parition, cursor)
+    # Get the broker for the topic and partition
+    broker_num = crud.get_related_broker(topic, partition, cursor)
     IP_addr = crud.get_broker_ip(broker_num, cursor)
 
     # Send the message to the broker
     response = requests.post(f"{IP_addr}/messages", json={
         "topic": topic,
         "content": message,
-        "partition": parition})
+        "partition": partition})
 
-    db.commit()  # Update the round robin parition
+    db.commit()  # Update the round robin partition
 
     if response.status_code == 200:
         return response.json()
@@ -62,7 +62,7 @@ async def enqueue(topic: str, producer_id: str, message: str, parition: int = No
 
 
 @router.post("/register")
-async def register_producer(topic: str, parition: int = None):
+async def register_producer(topic: str, partition: int = None):
     """
     Endpoint to register a producer for a topic
     :param topic: the topic to which the producer wants to publish
@@ -79,15 +79,15 @@ async def register_producer(topic: str, parition: int = None):
     if not crud.topic_exists(topic, cursor):
         raise HTTPException(status_code=404, detail="Topic does not exist")
 
-    is_round_robin = parition is None
-    if parition is None:
-        parition = 0
+    is_round_robin = partition is None
+    if partition is None:
+        partition = 0
 
-    if not crud.parition_exists(topic, parition, cursor):
+    if not crud.partition_exists(topic, partition, cursor):
         raise HTTPException(
-            status_code=404, detail="Parition does not exist")
+            status_code=404, detail="Partition does not exist")
 
-    crud.register_producer(producer_id, topic, parition,
+    crud.register_producer(producer_id, topic, partition,
                            is_round_robin, cursor)
 
     db.commit()  # Update the producer table entries

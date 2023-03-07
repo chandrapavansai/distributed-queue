@@ -9,19 +9,19 @@ router = APIRouter(
 
 
 @router.get("/")
-@router.get("/paritions")
+@router.get("/partitions")
 def list_topics():
     """
-    Endpoint to list all topics and paritions
-    :return: list of topics and paritions
+    Endpoint to list all topics and partitions
+    :return: list of topics and partitions
     """
 
     cursor = db.cursor()
-    # Get the topics and paritions using dictionary comprehension
+    # Get the topics and partitions using dictionary comprehension
     return {
         "topics": [
             {
-                topic: crud.get_paritions(topic, cursor)
+                topic: crud.get_partitions(topic, cursor)
             } for topic in crud.get_topics(cursor)
         ]
     }
@@ -39,22 +39,22 @@ def create_topic(name: str):
     """
 
     # Need to be a leader broker manager
-    # Use consistent hashing and get the broker for the topic - first default parition
+    # Use consistent hashing and get the broker for the topic - first default partition
     cursor = db.cursor()
 
     if crud.topic_exists(name, cursor):
         raise HTTPException(
             status_code=400, detail="Topic with that name already exists")
 
-    # broker_num = assign_broker_to_new_parition(name, 0)
-    # topic_parition_to_broker_table[name] = {
+    # broker_num = assign_broker_to_new_partition(name, 0)
+    # topic_partition_to_broker_table[name] = {
     #     1: brokers_table[broker_num]
     # }
     # crud.create_topic(name, cursor)
 
-    # broker_num = assign_broker_to_new_parition()
+    # broker_num = assign_broker_to_new_partition()
     broker_num = 0
-    # By default, create a parition with ID 1
+    # By default, create a partition with ID 1
     crud.set_partition_broker(broker_num, name, 0, cursor)
 
     db.commit()
@@ -65,27 +65,27 @@ def create_topic(name: str):
 
 
 # TODO: Should we allow the partition parameter?
-router.post("/paritions")
+router.post("/partitions")
 
 
-# def create_parition(topic: str, partition: int):
+# def create_partition(topic: str, partition: int):
 #     """
-#     Endpoint to create a parition for a topic
+#     Endpoint to create a partition for a topic
 #     :param topic: name of the topic
-#     :param parition: parition number
+#     :param partition: partition number
 #     :return: success message
 #     """
 
 #     # Need to be a leader broker manager
 
-#     # Use consistent hashing and get the broker for the parition
-#     broker_num = assign_broker_to_new_parition(topic, partition)
+#     # Use consistent hashing and get the broker for the partition
+#     broker_num = assign_broker_to_new_partition(topic, partition)
 
-#     if topic in topic_parition_to_broker_table and partition in topic_parition_to_broker_table[topic]:
+#     if topic in topic_partition_to_broker_table and partition in topic_partition_to_broker_table[topic]:
 #         raise HTTPException(
-#             status_code=400, detail="Parition with that ID already exists")
+#             status_code=400, detail="Partition with that ID already exists")
 
-#     topic_parition_to_broker_table[topic] = {
+#     topic_partition_to_broker_table[topic] = {
 #         partition: brokers_table[broker_num]
 #     }
 #     cursor = db.cursor()
@@ -94,15 +94,15 @@ router.post("/paritions")
 #         raise HTTPException(
 #             status_code=400, detail="Topic with that name does not exist")
 
-#     if crud.parition_exists(topic, parition, cursor):
+#     if crud.partition_exists(topic, partition, cursor):
 #         raise HTTPException(
-#             status_code=400, detail="Parition with that ID already exists")
+#             status_code=400, detail="Partition with that ID already exists")
 
-#     broker_num = assign_broker_to_new_parition()
-#     crud.insert_parition_broker(topic, parition, broker_num, cursor)
+#     broker_num = assign_broker_to_new_partition()
+#     crud.insert_partition_broker(topic, partition, broker_num, cursor)
 
 #     db.commit()
 
 #     # WAL_TAG
 
-#     return {"message": "Parition created successfully"}
+#     return {"message": "Partition created successfully"}
