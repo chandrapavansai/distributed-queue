@@ -6,12 +6,11 @@ from fastapi import APIRouter, HTTPException, status
 from . import crud
 from database import db
 
-router = APIRouter(
-    prefix="/producer",
-)
-
+from topic_locks import get_lock
 
 # Path: broker-manager\api\producer.py
+
+router = APIRouter(prefix="/producer")
 
 
 @router.get("/produce")
@@ -22,50 +21,50 @@ async def enqueue(topic: str, producer_id: str, message: str, partition: int = N
     :param producer_id: producer id obtained while registering
     :param message: log message to be enqueued
     :param partition: partition number to which the message is to be enqueued
-    :return: success message
     """
 
     # NOTE:
     # Has to be a leader broker manager
 
-    cursor = db.cursor()
+    async with get_lock(topic):
+        cursor = db.cursor()
 
-    if not crud.producer_exists(producer_id, cursor):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producer does not exist")
+        if not crud.producer_exists(producer_id, cursor):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producer does not exist")
 
-    if not crud.topic_registered_producer(producer_id, topic, cursor):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Producer is not registered to this topic")
+        if not crud.topic_registered_producer(producer_id, topic, cursor):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Producer is not registered to this topic")
 
-    if partition is None:
-        # Get the partition number from the database and do Round Robin, and set the next partition
-        partition = crud.get_round_robin_partition_producer(
-            producer_id, topic, cursor)
+        if partition is None:
+            # Get the partition number from the database and do Round Robin, and set the next partition
+            partition = crud.get_round_robin_partition_producer(
+                producer_id, topic, cursor)
 
-    if not crud.partition_exists(topic, partition, cursor):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Partition does not exist")
+        if not crud.partition_exists(topic, partition, cursor):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Partition does not exist")
 
-    # Get the broker for the topic and partition
-    broker_num = crud.get_related_broker(topic, partition, cursor)
-    broker_url = crud.get_broker_url(broker_num, cursor)
+        # Get the broker for the topic and partition
+        broker_num = crud.get_related_broker(topic, partition, cursor)
+        broker_url = crud.get_broker_url(broker_num, cursor)
 
-    # Send the message to the broker
-    try:
-        response = requests.post(f"{broker_url}/messages", json={
-            "topic": topic,
-            "content": message,
-            "partition": partition})
-    except requests.exceptions.ConnectionError:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail="Unable to process request, Broker is not available")
+        # Send the message to the broker
+        try:
+            response = requests.post(f"{broker_url}/messages", json={
+                "topic": topic,
+                "content": message,
+                "partition": partition})
+        except requests.exceptions.ConnectionError:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                                detail="Unable to process request, Broker is not available")
 
-    if response.ok:
-        crud.increment_size(topic, partition, cursor)
-        db.commit()  # Update the round-robin partition
-        return response.json()
-    else:
-        raise HTTPException(status_code=response.status_code,
-                            detail=response.json()['detail'])
+        if response.ok:
+            crud.increment_size(topic, partition, cursor)
+            db.commit()  # Update the round-robin partition
+            return response.json()
+        else:
+            raise HTTPException(status_code=response.status_code,
+                                detail=response.json()['detail'])
 
 
 @router.post("/register")

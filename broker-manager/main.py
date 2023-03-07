@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from api import consumer, producer, topics, heartbeat, managers, broker
 import utils
 
-app = FastAPI()
+app = FastAPI(title="Distributed Message Queue", version="0.2.0")
 
 utils.claim_existence()
 
