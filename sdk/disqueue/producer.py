@@ -19,6 +19,7 @@ class TopicProducer:
         self._prod_id = res.json()['producer_id']
         self._stop_thread = False
         self._worker_thread = threading.Thread(target=self._worker_routine)
+        self._worker_thread.start()
 
     def send_message(self, message: str):
         res = self.connection.post('/producer/produce',
@@ -33,7 +34,8 @@ class TopicProducer:
 
     def __del__(self):
         self._stop_thread = True
-        self._worker_thread.join()
+        if hasattr(self, '_worker_thread'):
+            self._worker_thread.join()
 
 
 class Producer:

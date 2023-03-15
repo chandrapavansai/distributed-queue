@@ -11,7 +11,8 @@ from database import db
 url = os.environ.get("MGR_URL")
 is_leader = os.environ.get("MGR_LEADER_URL") == url
 
-ACTIVITY_TIMEOUT = 10 # seconds
+ACTIVITY_TIMEOUT = 10  # seconds
+
 
 class HeartbeatThread(Thread):
     def __init__(self):
@@ -20,7 +21,6 @@ class HeartbeatThread(Thread):
     def run(self):
         while True:
             sleep(2)
-            print("Running heartbeat algorithm")
             heartbeat_algorithm()
 
 
@@ -58,7 +58,7 @@ def heartbeat_algorithm():
         try:
             requests.get(broker_url + "/ping")
         except requests.exceptions.ConnectionError:
-            hashing.remove_brokers([broker_id,], cursor)
+            hashing.remove_brokers([broker_id, ], cursor)
             db.commit()
             print("Deleted broker", broker_id)
 

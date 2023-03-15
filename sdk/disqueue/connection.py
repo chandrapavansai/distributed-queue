@@ -20,6 +20,7 @@ class Connection:
         self._stop_worker = False
 
         self._worker_thread = threading.Thread(target=self._worker_routine)
+        self._worker_thread.start()
 
     @property
     def _secondary_servers(self):
@@ -104,4 +105,5 @@ class Connection:
 
     def __del__(self):
         self._stop_worker = True
-        self._worker_thread.join()
+        if hasattr(self, '_worker_thread'):
+            self._worker_thread.join()

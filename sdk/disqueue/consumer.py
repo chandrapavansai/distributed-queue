@@ -14,14 +14,13 @@ class TopicConsumer:
         self.topic = topic
         self.connection = connection
         self._stop_threads = False
-        self._queue = SyncQueue()
-        self._thread = threading.Thread(target=self._worker)
         res = self.connection.post_readonly('/consumer/register', params=topic.dict())
         if not res.ok:
             raise Exception('Error while registering topic')
         self._cons_id = res.json()['consumer_id']
         self._queue = SyncQueue()
         self._thread = threading.Thread(target=self._worker)
+        self._thread.start()
 
     def _fetch_next(self) -> None:
 
@@ -52,7 +51,8 @@ class TopicConsumer:
 
     def __del__(self):
         self._stop_threads = True
-        self._thread.join()
+        if hasattr(self, '_thread'):
+            self._thread.join()
 
 
 class Consumer:

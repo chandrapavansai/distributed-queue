@@ -3,11 +3,11 @@ import os
 import psycopg2
 
 
-# from dotenv import load_dotenv, find_dotenv
+from dotenv import load_dotenv, find_dotenv
 
 # Take the credentials from the .env file
-# env_path = find_dotenv()
-# load_dotenv(env_path)
+env_path = find_dotenv()
+load_dotenv(env_path)
 
 
 DATABASE_NAME = os.getenv('DB_NAME') if os.getenv(
@@ -17,7 +17,7 @@ PASSWORD = os.getenv('DB_PASSWORD') if os.getenv(
     'DB_PASSWORD') is not None else 'postgres'
 HOST = os.getenv('DB_HOST') if os.getenv(
     'DB_HOST') is not None else 'localhost'
-PORT = os.getenv('DB_PORT') if os.getenv('DB_PORT') is not None else '5442'
+PORT = os.getenv('DB_PORT') if os.getenv('DB_PORT') is not None else '5432'
 
 db = psycopg2.connect(database=DATABASE_NAME,
                       host=HOST,
