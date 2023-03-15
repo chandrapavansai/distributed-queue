@@ -33,14 +33,19 @@ class Connection:
         invalid_uris = []
         for uri in uris:
             try:
-                res = requests.get(uri + '/servers')
+                res = requests.get(uri + '/managers')
             except requests.exceptions.ConnectionError:
                 invalid_uris.append(uri)
                 continue
             if res.ok:
                 self._servers_lock.acquire()
-                self._primary_server = res.json()['primary']
-                self._servers = res.json()['servers']
+                managers = res.json()['managers']
+                self._servers = []
+                for server in managers:
+                    if server[1]:
+                        self._primary_server = server[0]
+                    else:
+                        self._servers.append(server[0])
                 self._servers_lock.release()
             else:
                 invalid_uris.append(uri)
