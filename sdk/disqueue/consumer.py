@@ -1,10 +1,10 @@
 import threading
 from typing import Dict
-
-from connection import Connection
-from sync_queue import SyncQueue
 from time import sleep
-from topic import Topic
+
+from .connection import Connection
+from .sync_queue import SyncQueue
+from .topic import Topic
 
 
 class TopicConsumer:

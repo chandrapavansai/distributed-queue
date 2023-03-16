@@ -1,0 +1,75 @@
+services:
+  database:
+    image: postgres:12
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=ds-assgn-2-mgr
+#    configs:
+#      - wal_level=logical
+    volumes:
+      - ./db-data-mgr/:/var/lib/postgresql/data/
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d ds-assgn-2-mgr" ]
+      interval: 15s
+      timeout: 30s
+      retries: 5
+      start_period: 5s
+
+
+  # Broker Manager Leader
+  leader-mgr:
+    network_mode: "host"
+    build: ./broker-manager
+    command: uvicorn main:app --host 0.0.0.0 --port 8091 --reload
+    environment:
+      - DB_HOST=localhost
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_PORT=5442
+      - DB_NAME=ds-assgn-2-mgr
+      - MGR_URL=http://localhost:8091
+      - MGR_LEADER_URL=http://localhost:8091
+    volumes:
+      - ./broker-manager:/code
+    depends_on:
+      database:
+        condition: service_healthy
+
+  # Broker Manager Follower
+  follower-mgr-1:
+    network_mode: "host"
+    build: ./broker-manager
+    command: uvicorn main:app --host 0.0.0.0 --port 8092 --reload
+    environment:
+      - DB_HOST=localhost
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_PORT=5442
+      - DB_NAME=ds-assgn-2-mgr
+      - MGR_URL=http://localhost:8092
+      - MGR_LEADER_URL=http://localhost:8091
+    volumes:
+      - ./broker-manager:/code
+    depends_on:
+      database:
+        condition: service_healthy
+
+  # Broker Manager Follower
+  follower-mgr-2:
+    network_mode: "host"
+    build: ./broker-manager
+    command: uvicorn main:app --host 0.0.0.0 --port 8093 --reload
+    environment:
+      - DB_HOST=localhost
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_PORT=5442
+      - DB_NAME=ds-assgn-2-mgr
+      - MGR_URL=http://localhost:8093
+      - MGR_LEADER_URL=http://localhost:8091
+    volumes:
+      - ./broker-manager:/code
+    depends_on:
+      database:
+        condition: service_healthy

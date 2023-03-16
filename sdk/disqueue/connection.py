@@ -1,7 +1,8 @@
 from typing import Iterable
 import threading
-import requests
 from time import sleep
+
+import requests
 
 
 class Connection:
@@ -24,10 +25,7 @@ class Connection:
 
     @property
     def _secondary_servers(self):
-        self._servers_lock.acquire()
-        ans = list(filter(lambda x: x != self._primary_server, self._servers))
-        self._servers_lock.release()
-        return ans
+        return list(filter(lambda x: x != self._primary_server, self._servers))
 
     def _update_servers(self, uris: Iterable[str]):
         uris = list(uris)
@@ -69,16 +67,21 @@ class Connection:
 
     def _send_to_secondary(self, action, path: str, data: dict = None, params: dict = None):
 
+        self._servers_lock.acquire()
         if len(self._secondary_servers) == 0:
             try:
                 res = action(self._primary_server + path, data=data, params=params)
                 return res
             except requests.exceptions.ConnectionError:
+                self._servers_lock.release()
                 raise Exception('No server found')
         secondary_server = self._secondary_servers[self._round_robin_index]
+        self._servers_lock.release()
         try:
             res = action(secondary_server + path, data=data, params=params)
+            self._servers_lock.acquire()
             self._round_robin_index = (self._round_robin_index + 1) % len(self._secondary_servers)
+            self._servers_lock.release()
             return res
         except requests.exceptions.ConnectionError:
             self._servers_lock.acquire()
@@ -98,12 +101,14 @@ class Connection:
 
     def _worker_routine(self):
         while not self._stop_worker:
+            print('Updating servers because', self._stop_worker, 'is True')
             try:
                 self._update_servers(self._servers)
             finally:
                 sleep(1 / self.SERVER_LIST_FETCH_FREQUENCY)
 
     def __del__(self):
+        print('Closing connection')
         self._stop_worker = True
         if hasattr(self, '_worker_thread'):
             self._worker_thread.join()

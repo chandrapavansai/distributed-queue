@@ -1,6 +1,6 @@
 from typing import Optional
 
-from connection import Connection
+from .connection import Connection
 
 
 def list_topics(connection: Connection) -> list[str]:

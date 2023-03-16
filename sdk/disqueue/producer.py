@@ -2,8 +2,8 @@ from typing import Dict
 import threading
 from time import sleep
 
-from connection import Connection
-from topic import Topic
+from .connection import Connection
+from .topic import Topic
 
 
 class TopicProducer:
