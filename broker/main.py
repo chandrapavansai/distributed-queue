@@ -16,15 +16,18 @@ app = FastAPI()
 
 leader_url = os.getenv("LEADER_URL")
 broker_url = os.getenv("BROKER_URL")
-if leader_url is None:
-    raise Exception("LEADER_URL not set")
 if broker_url is None:
     raise Exception("BROKER_URL not set")
 
 @app.on_event("startup")
 async def ping_manager():
     print(leader_url)
-    requests.post(f"{leader_url}/broker?url={broker_url}")
+    try:
+        requests.post(f"{leader_url}/broker?url={broker_url}")
+        print("Running in manager-connected mode ...")
+    except:
+        print("Running in detached mode ...")
+    return
 
 
 def get_db():

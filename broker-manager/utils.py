@@ -64,6 +64,7 @@ def heartbeat_algorithm():
 
     # Get the list of consumers
     consumers = crud.get_consumers(cursor)
+    print(consumers)
     for consumer_id in consumers:
         # Check if the consumer is alive
         if datetime.utcnow() - crud.get_consumer_heartbeat(consumer_id, cursor) > timedelta(seconds=ACTIVITY_TIMEOUT):
@@ -74,9 +75,9 @@ def heartbeat_algorithm():
 
     # Get the list of producers
     producers = crud.get_producers(cursor)
+    print(producers)
     for producer_id in producers:
         # Check if the producer is alive
-        print(crud.get_producer_heartbeat(producer_id, cursor))
         if datetime.utcnow() - crud.get_producer_heartbeat(producer_id, cursor) > timedelta(seconds=ACTIVITY_TIMEOUT):
             # If not alive, delete the producer
             crud.delete_producer(producer_id, cursor)

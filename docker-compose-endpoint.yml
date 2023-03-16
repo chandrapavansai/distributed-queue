@@ -1,0 +1,98 @@
+services:
+  database:
+    image: postgres:12
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=ds-assgn-2-mgr
+#    configs:
+#      - wal_level=logical
+    volumes:
+      - ./db-data-mgr/:/var/lib/postgresql/data/
+    ports:
+      - 5442:5432
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d ds-assgn-2-mgr" ]
+      interval: 15s
+      timeout: 30s
+      retries: 5
+      start_period: 5s
+
+      
+  postgres1:
+    image: postgres:12
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=ds-assgn-1
+    volumes:
+      - ./db-data-bkr1/:/var/lib/postgresql/data/
+    expose:
+      - 5432
+    ports:
+      - 5433:5432
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d ds-assgn-1" ]
+      interval: 15s
+      timeout: 30s
+      retries: 5
+      start_period: 5s
+  
+  postgres2:
+    image: postgres:12
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=ds-assgn-1
+    volumes:
+      - ./db-data-bkr2/:/var/lib/postgresql/data/
+    expose:
+      - 5432
+    ports:
+      - 5434:5432
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d ds-assgn-1" ]
+      interval: 15s
+      timeout: 30s
+      retries: 5
+      start_period: 5s
+
+  broker1:
+    build: ./broker
+    command: uvicorn main:app --host 0.0.0.0 --port 80 --reload
+    environment:
+      - DB_HOST=postgres1
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_PORT=5432
+      - DB_NAME=ds-assgn-1
+      - BROKER_URL=http://localhost:8080
+      - LEADER_URL=
+    ports:
+      - 8080:80
+      - 5678:5678
+    volumes:
+      - ./broker:/code
+    depends_on:
+      postgres1:
+        condition: service_healthy
+  
+  broker2:
+    build: ./broker
+    command: uvicorn main:app --host 0.0.0.0 --port 80 --reload
+    environment:
+      - DB_HOST=postgres2
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_PORT=5432
+      - DB_NAME=ds-assgn-1
+      - BROKER_URL=http://localhost:8081
+      - LEADER_URL=
+    ports:
+      - 8081:80
+      - 5679:5678
+    volumes:
+      - ./broker:/code
+    depends_on:
+      postgres2:
+        condition: service_healthy
