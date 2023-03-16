@@ -16,7 +16,7 @@ class TopicProducer:
         res = connection.post('/producer/register', params=topic.dict())
         if not res.ok:
             raise Exception('Error while registering topic')
-        self._prod_id = res.json()['producer_id']
+        self._prod_id = res.json()
         self._stop_thread = False
         self._worker_thread = threading.Thread(target=self._worker_routine)
         self._worker_thread.start()
