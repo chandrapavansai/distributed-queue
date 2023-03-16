@@ -11,7 +11,7 @@ from database import db
 url = os.environ.get("MGR_URL")
 is_leader = os.environ.get("MGR_LEADER_URL") == url
 
-ACTIVITY_TIMEOUT = 10  # seconds
+ACTIVITY_TIMEOUT = 60  # seconds
 
 
 class HeartbeatThread(Thread):
@@ -66,7 +66,7 @@ def heartbeat_algorithm():
     consumers = crud.get_consumers(cursor)
     for consumer_id in consumers:
         # Check if the consumer is alive
-        if datetime.now() - crud.get_consumer_heartbeat(consumer_id, cursor) > timedelta(seconds=ACTIVITY_TIMEOUT):
+        if datetime.utcnow() - crud.get_consumer_heartbeat(consumer_id, cursor) > timedelta(seconds=ACTIVITY_TIMEOUT):
             # If not alive, delete the consumer
             crud.delete_consumer(consumer_id, cursor)
             db.commit()
@@ -76,7 +76,8 @@ def heartbeat_algorithm():
     producers = crud.get_producers(cursor)
     for producer_id in producers:
         # Check if the producer is alive
-        if datetime.now() - crud.get_producer_heartbeat(producer_id, cursor) > timedelta(seconds=ACTIVITY_TIMEOUT):
+        print(crud.get_producer_heartbeat(producer_id, cursor))
+        if datetime.utcnow() - crud.get_producer_heartbeat(producer_id, cursor) > timedelta(seconds=ACTIVITY_TIMEOUT):
             # If not alive, delete the producer
             crud.delete_producer(producer_id, cursor)
             db.commit()
