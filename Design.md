@@ -13,9 +13,9 @@
 ## Key features
 
 ### Topic Partitions
-Partitions divide Topics horizontally and each partition of a topic and are distributed among the available brokers. This imporves scalability and fault tolerance. If a broker goes down, the partitons that resided on that broker are redistributed among the remaining brokers. This partiton to broker mapping is implemented with _consistent hashing_. 
+Partitions divide Topics horizontally and each partition of a topic and are distributed among the available brokers. This imporves scalability and fault tolerance. If a broker goes down, the partitons that resided on that broker are redistributed among the remaining brokers. This partiton to broker mapping implemented is _consistent_ i.e no partitions residing on active brokers are redistributed.
 
-Clients can subscribe to a single partitions of a topic or the topic as a whole. Manager pics partitons in round robin fashion when a topic is suscribed as a whole.
+Clients can subscribe to a single partitions of a topic or the topic as a whole. Manager picks partitons in round robin fashion when a topic is suscribed as a whole; when a group of partitions have been consumed they are not considered for the round robin partition picking.
 
 ### Broker manager
 Manager acts as intermediary between clients and brokers. 
