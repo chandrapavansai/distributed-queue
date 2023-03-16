@@ -9,6 +9,9 @@ class Topic:
     def __eq__(self, other):
         return self.topic_name == other.topic_name and self.partition == other.partition
 
+    def __hash__(self):
+        return hash((self.topic_name, self.partition))
+
     def dict(self):
         if self.partition is not None:
             return {
