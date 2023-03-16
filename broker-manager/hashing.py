@@ -44,8 +44,6 @@ def remove_brokers(remove_ids_list: list, cursor=None):
             active_brokers.remove(id)
 
     no_of_brokers -= len(remove_ids_list)
-    if no_of_brokers == 0:
-        return 0
 
     transfer_list = []
     for id in remove_ids_list:
@@ -55,9 +53,11 @@ def remove_brokers(remove_ids_list: list, cursor=None):
             transfer_list.append((topic, partition,))
 
     # Do not delete partition details, as it is used in other tables
-    for topic, partition in transfer_list:
-        new_broker_id = active_brokers[random.randint(0, no_of_brokers - 1)]
-        crud.update_partition_broker(new_broker_id, topic, partition, cursor)
+    # Redistribute partitions only if there are active brokers remaining    
+    if no_of_brokers > 0:
+        for topic, partition in transfer_list:
+            new_broker_id = active_brokers[random.randint(0, no_of_brokers - 1)]
+            crud.update_partition_broker(new_broker_id, topic, partition, cursor)
 
     for id in remove_ids_list:
         cursor.execute("DELETE FROM Broker WHERE broker_id = %s", (id,))
