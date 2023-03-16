@@ -6,6 +6,9 @@ class Topic:
         self.topic_name = topic_name
         self.partition = partition
 
+    def __eq__(self, other):
+        return self.topic_name == other.topic_name and self.partition == other.partition
+
     def dict(self):
         if self.partition is not None:
             return {
