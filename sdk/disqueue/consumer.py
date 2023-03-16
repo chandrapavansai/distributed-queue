@@ -17,7 +17,7 @@ class TopicConsumer:
         res = self.connection.post_readonly('/consumer/register', params=topic.dict())
         if not res.ok:
             raise Exception('Error while registering topic')
-        self._cons_id = res.json()['consumer_id']
+        self._cons_id = res.json()
         self._queue = SyncQueue()
         self._thread = threading.Thread(target=self._worker)
         self._thread.start()
