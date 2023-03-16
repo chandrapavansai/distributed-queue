@@ -58,9 +58,9 @@ APIs of broker and broker manager are extensively tested all the endpoints cases
 + [broker-manager/tests](broker-manager/tests)
 
 
-### End to End
+<!-- ### End to End
 TODO
-
+ -->
 <!-- ## Challenges
 
 Faced some issues while trying to make some of the database transactions atomic (for persistence), had to use db.rollback() in case of any issues with the update queries. Faced some issues with dockerization.
