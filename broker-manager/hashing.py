@@ -44,6 +44,8 @@ def remove_brokers(remove_ids_list: list, cursor=None):
             active_brokers.remove(id)
 
     no_of_brokers -= len(remove_ids_list)
+    if no_of_brokers == 0:
+        return 0
 
     transfer_list = []
     for id in remove_ids_list:
