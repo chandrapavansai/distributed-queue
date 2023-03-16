@@ -6,8 +6,8 @@ This repo is home for our submissions for the monthly assignements of the course
 ## Files
 
 - [/assignments](/assignments) - Problem statements for the monthly assignments
-- [/boker](/broker) - Server for the broker service for the logging queue, which is dockerized
-- [/boker-manager](/broker-manager) - Server for the broker manager service for the logging queue, which is dockerized
+- [/broker](/broker) - Server for the broker service for the logging queue, which is dockerized
+- [/broker-manager](/broker-manager) - Server for the broker manager service for the logging queue, which is dockerized
 
 - [/sdk](/sdk) - Contains Python client library - [disqueue](/sdk/disqueue) to use the logging queue service 
 
@@ -26,7 +26,8 @@ From the root of the cloned repo run the following commands
 + Wait till managers and start the broker instances:
   `docker compose --file ./docker-compose-brokers.yml up --build`
 
-
+### Unittest / API Endpoint testing
+Checkout [/broker-manager/README.md](/broker-manager/README.md)
 ## Design
 Checkout [Design.md](Design.md)
 
