@@ -32,10 +32,13 @@ class TopicProducer:
             self.connection.get('/ping', params={'producer_id': self._prod_id})
             sleep(1 / self.PING_FREQUENCY)
 
-    def __del__(self):
+    def stop_worker(self):
         self._stop_thread = True
-        if hasattr(self, '_worker_thread'):
+        if hasattr(self, '_worker_thread') and self._worker_thread.is_alive():
             self._worker_thread.join()
+
+    def __del__(self):
+        self.stop_worker()
 
 
 class Producer:
@@ -78,3 +81,10 @@ class Producer:
         if topic not in self._producers:
             raise Exception('Topic not registered')
         self._producers[topic].send_message(message)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        for producer in self._producers.values():
+            producer.stop_worker()

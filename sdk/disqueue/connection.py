@@ -101,14 +101,22 @@ class Connection:
 
     def _worker_routine(self):
         while not self._stop_worker:
-            print('Updating servers because', self._stop_worker, 'is True')
             try:
                 self._update_servers(self._servers)
             finally:
                 sleep(1 / self.SERVER_LIST_FETCH_FREQUENCY)
 
-    def __del__(self):
-        print('Closing connection')
+    def __exit__(self, exc_type, exc_val, exc_tb):
         self._stop_worker = True
+        print('Closing connection...',)
         if hasattr(self, '_worker_thread'):
             self._worker_thread.join()
+
+    def __enter__(self):
+        return self
+
+    # def __del__(self):
+    #     print('Closing connection in ', threading.current_thread())
+    #     self._stop_worker = True
+    #     if hasattr(self, '_worker_thread'):
+    #         self._worker_thread.join()

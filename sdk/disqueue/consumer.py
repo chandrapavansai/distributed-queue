@@ -13,7 +13,7 @@ class TopicConsumer:
     def __init__(self, topic: Topic, connection: Connection):
         self.topic = topic
         self.connection = connection
-        self._stop_threads = False
+        self._stop_thread = False
         res = self.connection.post_readonly('/consumer/register', params=topic.dict())
         if not res.ok:
             raise Exception('Error while registering topic')
@@ -30,7 +30,7 @@ class TopicConsumer:
         self._queue.put(res.json()['message'])
 
     def _worker(self, ) -> None:
-        while not self._stop_threads:
+        while not self._stop_thread:
             try:
                 self._fetch_next()
             finally:
@@ -49,10 +49,13 @@ class TopicConsumer:
             self._fetch_next()
         return self._queue.get()
 
-    def __del__(self):
-        self._stop_threads = True
-        if hasattr(self, '_thread'):
+    def stop_worker(self):
+        self._stop_thread = True
+        if hasattr(self, '_thread') and self._thread.is_alive():
             self._thread.join()
+
+    def __del__(self):
+        self.stop_worker()
 
 
 class Consumer:
@@ -77,3 +80,10 @@ class Consumer:
         if topic not in self._consumers:
             raise Exception('Topic not registered')
         return self._consumers[topic].get_size()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        for consumer in self._consumers.values():
+            consumer.stop_worker()
