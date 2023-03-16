@@ -14,3 +14,6 @@ redis-data/
 
 # Ignore override docker-compose file
 docker-compose.override.yml
+
+.pytest_cache/
+db-data*
