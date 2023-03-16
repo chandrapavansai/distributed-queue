@@ -7,6 +7,8 @@ This repo is home for our submissions for the monthly assignements of the course
 
 - [/assignments](/assignments) - Problem statements for the monthly assignments
 - [/boker](/broker) - Server for the broker service for the logging queue, which is dockerized
+- [/boker-manager](/broker-manager) - Server for the broker manager service for the logging queue, which is dockerized
+
 - [/sdk](/sdk) - Contains Python client library - [disqueue](/sdk/disqueue) to use the logging queue service 
 
 ## Server Setup
@@ -16,31 +18,14 @@ This repo is home for our submissions for the monthly assignements of the course
 #### Prerequisites
 Docker, Docker Compose
 
-From the root of the cloned repo run `docker compose up` or `docker-compose up` to start the server.
 
-### Alternatives
-Checkout [/broker/README.md](/broker/README.md)
+From the root of the cloned repo run the following commands
 
++ Start the manager instances:
+  `docker compose --file ./docker-compose-managers.yml up --build`
++ Wait till managers and start the broker instances:
+  `docker compose --file ./docker-compose-brokers.yml up --build`
 
-## Testing
-
-### API testing
-
-[Testing in broker](/broker/README.md#testing)
-
-### Unit testing the client library 
-
-```sh
-cd sdk/disqueue
-python3 -m unittest -v
-```
-
-### End to End Testing
-
-```sh
-cd sdk/disqueue/e2e
-python3 ./test_e2e.py <test_dir>
-````
 
 ## Design
 Checkout [Design.md](Design.md)
