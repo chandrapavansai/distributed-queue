@@ -9,7 +9,10 @@ def get_active_brokers(cursor=None):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute("SELECT DISTINCT broker_id FROM Broker")
-    return [broker_id[0] for broker_id in cursor.fetchall()]
+    id_list = cursor.fetchall()
+    if id_list is None:
+        return 0
+    return [broker_id[0] for broker_id in id_list]
 
 
 def add_broker(url: str, cursor=None):
