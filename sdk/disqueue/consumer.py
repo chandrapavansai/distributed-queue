@@ -38,7 +38,7 @@ class TopicConsumer:
 
     def get_size(self) -> int:
         size_in_buffer = len(self._queue)
-        res = self.connection.get('/size', params={**self.topic.dict(), 'consumer_id': self._cons_id})
+        res = self.connection.get('/consumer/size', params={**self.topic.dict(), 'consumer_id': self._cons_id})
         if not res.ok:
             raise Exception('Error while getting size')
 
