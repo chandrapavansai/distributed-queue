@@ -87,8 +87,34 @@ def assign_broker_to_new_partition(topic: str, partition: int, cursor=None):
 
     no_of_brokers = len(active_brokers)
 
-    if no_of_brokers == 0:
-        return -1
+    if no_of_brokers > 0:
+        new_broker_id = active_brokers[random.randint(0, no_of_brokers - 1)]
+        crud.set_partition_broker(new_broker_id, topic, partition, cursor)
+        return 0
 
-    new_broker_id = active_brokers[random.randint(0, no_of_brokers - 1)]
-    crud.set_partition_broker(new_broker_id, topic, partition, cursor)
+    crud.set_partition_broker(None, topic, partition, cursor)    
+    return -1
+
+
+def assign_broker_to_old_partition(topic: str, partition: int, cursor=None):
+    """
+    Endpoint to create a partition for a topic
+    :param topic: name of the topic
+    :param partition: partition number
+    :param cursor: database cursor
+    :return: assigned broker id
+    """
+    active_brokers = get_active_brokers()
+    if cursor is None:
+        cursor = db.cursor()
+
+    no_of_brokers = len(active_brokers)
+
+    if no_of_brokers > 0:
+        new_broker_id = active_brokers[random.randint(0, no_of_brokers - 1)]
+        crud.update_partition_broker(new_broker_id, topic, partition, cursor)
+        return 0
+
+    crud.update_partition_broker(None, topic, partition, cursor)    
+    return -1
+

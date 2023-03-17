@@ -57,10 +57,11 @@ async def consume(topic: str, consumer_id: str, partition: int = None):
 
     # Greedy approach to handle broker failure
     if broker_num is None:
-        if hashing.assign_broker_to_new_partition(topic, partition, cursor) == -1:
+        if hashing.assign_broker_to_old_partition(topic, partition, cursor) == -1:
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                                 detail="Unable to process request, No brokers available")
 
+    broker_num = crud.get_related_broker(topic, partition, cursor)
     url = crud.get_broker_url(broker_num, cursor)
 
     # Get the message from the broker

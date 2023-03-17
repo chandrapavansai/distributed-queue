@@ -11,7 +11,7 @@ from database import db
 url = os.environ.get("MGR_URL")
 is_leader = os.environ.get("MGR_LEADER_URL") == url
 
-ACTIVITY_TIMEOUT = 60  # seconds
+ACTIVITY_TIMEOUT = 10  # seconds
 
 
 class HeartbeatThread(Thread):
@@ -20,7 +20,7 @@ class HeartbeatThread(Thread):
 
     def run(self):
         while True:
-            sleep(2)
+            sleep(ACTIVITY_TIMEOUT)
             heartbeat_algorithm()
 
 
@@ -61,9 +61,9 @@ def heartbeat_algorithm():
         except requests.exceptions.ConnectionError:
             print("Deleted broker", broker_id)
             dead_brokers.append(broker_id)
-            db.commit()
 
     hashing.remove_brokers(dead_brokers, cursor)
+    db.commit()
     
     # Get the list of consumers
     consumers = crud.get_consumers(cursor)

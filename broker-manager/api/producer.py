@@ -53,7 +53,7 @@ async def enqueue(topic: str, producer_id: str, message: str, partition: int = N
 
         # Greedy approach to handle broker failure
         if broker_num is None:
-            if hashing.assign_broker_to_new_partition(topic, partition, cursor) == -1:
+            if hashing.assign_broker_to_old_partition(topic, partition, cursor) == -1:
                 raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                                     detail="Unable to process request, No brokers available")
             
