@@ -4,3 +4,5 @@ uvicorn==0.21.0
 psycopg2-binary==2.9.5
 asyncio==3.4.3
 python-dotenv
+httpx
+pytest
