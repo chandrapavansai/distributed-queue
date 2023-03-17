@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+import hashing as hashing
 import requests
 from database import db
 from fastapi import APIRouter, HTTPException, status
@@ -53,6 +54,13 @@ async def consume(topic: str, consumer_id: str, partition: int = None):
 
     # Get the broker for the topic and partition
     broker_num = crud.get_related_broker(topic, partition, cursor)
+
+    # Greedy approach to handle broker failure
+    if broker_num is None:
+        if hashing.assign_broker_to_new_partition(topic, partition, cursor) == -1:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                                detail="Unable to process request, No brokers available")
+
     url = crud.get_broker_url(broker_num, cursor)
 
     # Get the message from the broker

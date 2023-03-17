@@ -53,18 +53,20 @@ def heartbeat_algorithm():
 
     # Get the list of brokers
     brokers = crud.get_broker_ids(cursor)
+    dead_brokers = []
     for broker_id in brokers:
         broker_url = crud.get_broker_url(broker_id, cursor)
         try:
             requests.get(broker_url + "/ping")
         except requests.exceptions.ConnectionError:
-            hashing.remove_brokers([broker_id, ], cursor)
-            db.commit()
             print("Deleted broker", broker_id)
+            dead_brokers.append(broker_id)
+            db.commit()
 
+    hashing.remove_brokers(dead_brokers, cursor)
+    
     # Get the list of consumers
     consumers = crud.get_consumers(cursor)
-    print(consumers)
     for consumer_id in consumers:
         # Check if the consumer is alive
         if datetime.utcnow() - crud.get_consumer_heartbeat(consumer_id, cursor) > timedelta(seconds=ACTIVITY_TIMEOUT):
@@ -75,7 +77,6 @@ def heartbeat_algorithm():
 
     # Get the list of producers
     producers = crud.get_producers(cursor)
-    print(producers)
     for producer_id in producers:
         # Check if the producer is alive
         if datetime.utcnow() - crud.get_producer_heartbeat(producer_id, cursor) > timedelta(seconds=ACTIVITY_TIMEOUT):

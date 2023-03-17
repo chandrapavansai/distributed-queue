@@ -1,12 +1,12 @@
 from uuid import uuid4
 
+import hashing as hashing
 import requests
+from database import db
 from fastapi import APIRouter, HTTPException, status
+from topic_locks import get_lock
 
 from . import crud
-from database import db
-
-from topic_locks import get_lock
 
 # Path: broker-manager\api\producer.py
 
@@ -50,6 +50,13 @@ async def enqueue(topic: str, producer_id: str, message: str, partition: int = N
 
         # Get the broker for the topic and partition
         broker_num = crud.get_related_broker(topic, partition, cursor)
+
+        # Greedy approach to handle broker failure
+        if broker_num is None:
+            if hashing.assign_broker_to_new_partition(topic, partition, cursor) == -1:
+                raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                                    detail="Unable to process request, No brokers available")
+            
         broker_url = crud.get_broker_url(broker_num, cursor)
 
         # Send the message to the broker
