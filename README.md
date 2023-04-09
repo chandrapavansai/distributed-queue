@@ -2,6 +2,8 @@
 
 This repo is home for our submissions for the monthly assignements of the course [CS60002 - Distributed Systems](https://cse.iitkgp.ac.in/~sandipc/courses/cs60002/cs60002.html)
 
+Part 1 repo: https://github.com/j-tesla/raft-atm/
+
 ## Files
 
 - [/assignments](/assignments) - Problem statements for the monthly assignments
