@@ -17,3 +17,7 @@ docker-compose.override.yml
 
 .pytest_cache/
 db-data*
+
+atm/
+
+.journals/
