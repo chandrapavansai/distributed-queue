@@ -1,5 +1,4 @@
 from pysyncobj import SyncObj, SyncObjConf, replicated_sync
-
 class Raft(SyncObj):
     def __init__(self, self_node, partner_nodes,host,topic, partition):
         # Creating raft inst
@@ -39,6 +38,10 @@ class Raft(SyncObj):
         if offset >= len(self.__queue):
             return None
         return len(self.__queue) - offset
+    
+    @replicated_sync
+    def clear_queue(self, offset):
+        self.__queue = []
     
     def get_leader(self):
         return self.getLeader()

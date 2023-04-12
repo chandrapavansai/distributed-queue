@@ -9,7 +9,7 @@ class Broker:
         for topic,partitionObj in topics.items():
             self.raft[topic] = {}
             for partition,partners in partitionObj.items():
-                self.raft[topic][partition] = Raft(self.url, self.filter_partners(partners),host, topic, partition)
+                self.raft[topic][partition] = Raft(f"{self.url}", self.filter_partners(partners),host, topic, partition)
                 self.raft[topic][partition].waitReady()
 
     def filter_partners(self, partners):
@@ -27,7 +27,7 @@ class Broker:
             self.raft[topic] = {}
         # Check if partition exists
         if partition not in self.raft[topic]:
-            self.raft[topic][partition] = Raft(self.url, self.filter_partners(partners),self.host, topic, partition)
+            self.raft[topic][partition] = Raft(f"{self.url}", self.filter_partners(partners),self.host, topic, partition)
             self.raft[topic][partition].waitReady()
         
         # Check status of raft object
@@ -53,7 +53,9 @@ class Broker:
         self.raft[topic][partition].waitReady()
     
     def delete_topic(self, topic, partition):
-        self.raft[topic][partition].destroy()
+        # If topic exists
+        if topic in self.raft and partition in self.raft[topic]:
+            self.raft[topic][partition].clear_queue(0)
 
     def __del__(self):
         for topic,partitionObj in self.raft.items():

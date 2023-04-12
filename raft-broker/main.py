@@ -76,51 +76,6 @@ def post_message(content: str, topic: str, partition: int, partners: list = Quer
     print(partition)
     print(content)
     print(partners)
-
-    import socket
-
-    # for HOST in ['distributed-queue-raft-broker2-1','raft-broker2','raft-broker2-1']:
-    #     for PORT in [8000,8080,9000]:
-    #         try:
-    #             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    #                 s.settimeout(1)
-    #                 # Resolve the hostname to an IP address
-    #                 ip_address = socket.gethostbyname(HOST)
-    #                 print(ip_address,HOST,PORT)
-    #                 # Send get request to the /ping
-    #                 res = requests.get("https://{}:8000/ping".format(ip_address), timeout=1)
-    #                 print(f"Sending a ping to raft-broker2-1:9000, response: {res.status_code}")
-    #                 # Connect using IP
-    #                 s.connect((ip_address, PORT))
-    #                 # Set a timeout of 1 second
-    #                 s.sendall(b'Hello, world')
-    #                 data = s.recv(1024)
-
-    #             print('Received', repr(data))
-    #         except:
-    #             print("Connection error")
-    # return ''
-
-    # client = docker.DockerClient()
-    # container = client.containers.get("distributed-queue-raft-broker2-1")
-    # network_name = "raft-net"
-    # ip_add = container.attrs["NetworkSettings"]["Networks"][network_name]["IPAddress"]
-    # print(ip_add)
-
-    # Send a ping to raft-broker2-1:9000 with timeout of 1 second
-    # res = requests.get("http://distributed-queue-raft-broker2-1:8000/ping", timeout=1)
-    # # res = requests.get("http://raft-broker2-1:8000/ping", timeout=1)
-    # # res = requests.get("http://192.168.128.4:8000/ping", timeout=1)
-
-
-    # # res = requests.get("http://{}:8000/ping".format(ip_add), timeout=1)
-
-    # print(f"Sending a ping to raft-broker2-1:9000, response: {res.status_code}")
-    # return 'OK'
-    # Send a ping to raft-broker3-1:9000
-    # res = requests.get("http://raft-broker3-1:9000/ping")
-    # print(f"Sending a ping to raft-broker3-1:9000, response: {res.status_code}, {res.text}")
-        
     return broker.create_message(topic,partition,content,partners)
 
 
@@ -129,7 +84,7 @@ def get_message_count(topic: str, partition: int, offset: int = 0):
     return broker.get_message_count(topic, partition, offset)
 
 # delete a topic-partition
-@app.delete("/messages")
+@app.get("/messages/delete")
 def delete_message(topic: str, partition: int):
     return broker.delete_topic(topic, partition)
 
