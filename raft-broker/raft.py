@@ -36,7 +36,8 @@ class Raft(SyncObj):
     
     @replicated_sync
     def create_message(self,message):
-        return self.__queue.append(message)
+        self.__queue.append(message)
+        return len(self.__queue) - 1
     
     @replicated_sync
     def get_message(self, offset):

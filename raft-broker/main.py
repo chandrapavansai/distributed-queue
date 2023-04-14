@@ -28,7 +28,7 @@ async def ping_manager():
     }
 
     global broker
-    broker = Broker(config ,broker_host)
+    broker = Broker({} ,broker_host)
 
     broker_url = 'http://'+ broker_host + ':' + '8000'
     try:
@@ -70,7 +70,11 @@ def post_message(content: str, topic: str, partition: int, partners: list = Quer
     print(partition)
     print(content)
     print(partners)
-    return broker.create_message(topic,partition,content,partners)
+    len = broker.create_message(topic,partition,content,partners)
+    if len is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="No message found")
+    return {"message": "Message added successfully", "queue_len": len}
 
 
 @app.get("/messages/count")
@@ -80,7 +84,7 @@ def get_message_count(topic: str, partition: int, offset: int = 0):
     if cnt is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Topic '{topic}' - partition '{partition}' not found")
-    return {"count": cnt}
+    return cnt
 
 # delete a topic-partition
 @app.get("/messages/delete")
@@ -90,6 +94,10 @@ def delete_message(topic: str, partition: int):
 @app.post("/new")
 def add_new(topic: str, partition: int, partners: list = Query([], alias="partners")):
     partners = partners[0].split(',')
+    # Creating new topic-partition
+    print(topic)
+    print(partition)
+    print(partners)
     return broker.create_topic(topic, partition, partners)
 
 @app.get("/freeport")
