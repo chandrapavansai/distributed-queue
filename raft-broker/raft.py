@@ -1,14 +1,25 @@
 from pysyncobj import SyncObj, SyncObjConf, replicated_sync
+import os
 class Raft(SyncObj):
     def __init__(self, self_node, partner_nodes,host,topic, partition):
+        if self_node is None:
+            raise Exception('Self node is None')
         # Creating raft inst
         print(f'Creating Raft for {topic} {partition}...')
         print(f'Self node: {self_node}')
         print(f'Partner nodes: {partner_nodes}')
-        port = self_node.split(':')[1]
-        cfg = SyncObjConf(dynamicMembershipChange=False, journalFile=f'.journals/journal_{port}_{host}_{topic}_{partition}.journal',
-                          logLevel='DEBUG'
-                          )
+        port = self_node.split(':')[2] if self_node.startswith('http') else self_node.split(':')[1]\
+        # Check if .journals folder exists
+        if not os.path.exists('.journals'):
+            os.makedirs('.journals')
+        
+        journal_file_name = f'.journals/journal_{host}_{port}_{topic}_{partition}.journal'
+        # If journal file exists clear it
+        if os.path.exists(journal_file_name):
+            os.remove(journal_file_name)
+            os.remove(f'{journal_file_name}.meta') if os.path.exists(f'{journal_file_name}.meta') else None
+
+        cfg = SyncObjConf(dynamicMembershipChange=False, journalFile=journal_file_name,logLevel='DEBUG')
         super().__init__(self_node, partner_nodes, conf=cfg)
 
         self.topic = topic
@@ -35,7 +46,7 @@ class Raft(SyncObj):
 
     @replicated_sync
     def get_message_count(self, offset):
-        if offset >= len(self.__queue):
+        if offset > len(self.__queue):
             return None
         return len(self.__queue) - offset
     

@@ -19,17 +19,16 @@ async def ping_manager():
     print(leader_url)
     print(broker_host)
     print("leader_url",leader_url,"broker_host",broker_host)   # Create Broker object
-    global broker
-    broker_url = broker_host + ':' + '9000'
 
     # ! For testing purposes
     config = {
         'test': {
-            1: ['distributed-queue-raft-broker1-1:9000','distributed-queue-raft-broker2-1:9000','distributed-queue-raft-broker3-1:9000'],
+            1: ['raft-broker1:9000','raft-broker2:9000','raft-broker3:9000'],
         }
     }
 
-    broker = Broker(broker_url, {} ,broker_host)
+    global broker
+    broker = Broker(config ,broker_host)
 
     broker_url = 'http://'+ broker_host + ':' + '8000'
     try:
@@ -42,14 +41,6 @@ async def ping_manager():
 
 @app.middleware("http")
 async def add_process_time_header(request, call_next):
-    print(request.body)
-    # Check if the request is a Raft HTTP message
-    if request.headers.get("X-Pysyncobj", "").lower() == "true":
-        # If it is, return a 200 response without calling the route handler
-        print("Received Raft message")
-        # Print the Raft message
-        print(request.body)
-        return Response(status_code=200)
     start_time = time.time()
     response = await call_next(request)
     process_time = time.time() - start_time
@@ -74,6 +65,7 @@ def get_message(topic: str, partition: int, offset: int = 0):
 
 @app.post("/messages",status_code=status.HTTP_201_CREATED)
 def post_message(content: str, topic: str, partition: int, partners: list = Query([], alias="partners")):
+    partners = partners[0].split(',')
     print(topic)
     print(partition)
     print(content)
@@ -83,7 +75,12 @@ def post_message(content: str, topic: str, partition: int, partners: list = Quer
 
 @app.get("/messages/count")
 def get_message_count(topic: str, partition: int, offset: int = 0):
-    return broker.get_message_count(topic, partition, offset)
+    cnt =  broker.get_message_count(topic, partition, offset)
+    # If cnt is None, raise http Exception
+    if cnt is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Topic '{topic}' - partition '{partition}' not found")
+    return {"count": cnt}
 
 # delete a topic-partition
 @app.get("/messages/delete")
@@ -92,7 +89,12 @@ def delete_message(topic: str, partition: int):
 
 @app.post("/new")
 def add_new(topic: str, partition: int, partners: list = Query([], alias="partners")):
+    partners = partners[0].split(',')
     return broker.create_topic(topic, partition, partners)
+
+@app.get("/freeport")
+def get_free_port():
+    return broker.get_free_port()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Start the FastAPI server.")
