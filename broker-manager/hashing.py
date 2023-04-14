@@ -3,6 +3,7 @@ import random
 from api import crud
 from database import db
 
+REPLICA_COUNT = 3
 
 # utility functions for using the hash ring
 def get_active_brokers(cursor=None):
@@ -85,16 +86,13 @@ def assign_broker_to_new_partition(topic: str, partition: int, cursor=None):
     if cursor is None:
         cursor = db.cursor()
 
-    no_of_brokers = len(active_brokers)
+    # Select 3 brokers at random from all the active brokers
+    selected_brokers = random.sample(active_brokers, REPLICA_COUNT)
 
-    if no_of_brokers > 0:
-        new_broker_id = active_brokers[random.randint(0, no_of_brokers - 1)]
+    for new_broker_id in selected_brokers:
         crud.set_partition_broker(new_broker_id, topic, partition, cursor)
-        return 0
-
-    crud.set_partition_broker(None, topic, partition, cursor)    
-    return -1
-
+    
+    return selected_brokers
 
 def assign_broker_to_old_partition(topic: str, partition: int, cursor=None):
     """

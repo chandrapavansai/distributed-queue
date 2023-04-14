@@ -13,14 +13,23 @@ CREATE TABLE IF NOT EXISTS Topic (
     -- Primary key is name of topic as it is unique
     topic_name TEXT NOT NULL,
     partition_id INTEGER NOT NULL DEFAULT 0,
-    broker_id INTEGER,
     size INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (broker_id) REFERENCES Broker(broker_id),
-    PRIMARY KEY (topic_name, partition_id)
+    PRIMARY KEY (topic_name, partition_id);
 );
 
+-- Create a Topic_Broker Table
+CREATE TABLE IF NOT EXISTS Topic_Broker (
+    topic_name TEXT NOT NULL,
+    partition_id INTEGER NOT NULL DEFAULT 0,
+    broker_id INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (topic_name, partition_id) REFERENCES Topic(topic_name, partition_id),
+    FOREIGN KEY (broker_id) REFERENCES Broker(broker_id),
+    PRIMARY KEY (topic_name, partition_id, broker_id)
+);
 
 -- Create Table in postgresql named Consumer
 CREATE TABLE IF NOT EXISTS Consumer (

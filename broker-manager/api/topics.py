@@ -1,6 +1,6 @@
 from database import db
 from fastapi import APIRouter, HTTPException, status
-
+import requests
 import hashing
 from . import crud
 
@@ -70,7 +70,17 @@ def create_partition(topic: str):
 
     new_partition = crud.get_partition_count(topic, cursor)
 
-    hashing.assign_broker_to_new_partition(topic, new_partition, cursor)
+    selected_brokers = hashing.assign_broker_to_new_partition(topic, new_partition, cursor)
+    ips = [crud.get_broker_url(broker, cursor) for broker in selected_brokers]
+
+    # ? Change this later
+    # Change port in ips to 9000
+    ips = [ip.replace(":8000", ":9000") for ip in ips]
+
+    # Send a message to each broker letting them know that they have a new partition
+    for ip in ips:
+        # Send the message
+        requests.post(f"http://{ip}/new", json={"topic": topic, "partition": new_partition, "partners": ips})
 
     db.commit()
     return {"message": "Partition created", "partition": new_partition}

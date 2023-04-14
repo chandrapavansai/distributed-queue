@@ -82,6 +82,8 @@ def test_create_topic_with_partitions_check_broker():
     response = client.get("/topics")
     assert response.status_code == 200
     assert response.json() == {'topics': [{f"{topic_name}": [0, 1]}]}
+
+    # !! Don't use this function
     # See if broker is assigned
     assert crud.get_broker_id_from_topic(topic_name, 0) == 0
     assert crud.get_broker_id_from_topic(topic_name, 1) == 0
@@ -276,6 +278,9 @@ def test_broker_remove_check_reassign():
     assert response.status_code == 200
     assert response.json() == {"message": "Broker deleted",
                                "url": "http://localhost:8080", "current_count": 1}
+    
+    # ! Don't use this function
+    # ? Deprecated
     assert crud.get_broker_id_from_topic(topic_name, 0) == 1
     assert crud.get_broker_id_from_topic(topic_name, 1) == 1
 

@@ -39,6 +39,9 @@ def create_broker(url: str):
     # Need to be a leader broker manager
     # Add the broker to the database
     cursor = db.cursor()
+    # Check if url has http://  if not add it
+    if not url.startswith("http://"):
+        url = "http://" + url
     new_broker_id = hashing.add_broker(url, cursor)
     db.commit()
     return {"message": "Broker created", "new_id": new_broker_id}

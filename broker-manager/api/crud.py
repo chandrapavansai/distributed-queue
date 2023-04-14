@@ -193,8 +193,8 @@ def get_related_broker(topic, partition, cursor):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute(
-        "SELECT broker_id FROM Topic WHERE topic_name = %s AND partition_id = %s", (topic, partition))
-    return cursor.fetchone()[0]
+        "SELECT broker_id FROM Topic_Broker WHERE topic_name = %s AND partition_id = %s", (topic, partition))
+    return cursor.fetchall()
 
 
 # Tested

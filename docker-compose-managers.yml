@@ -21,11 +21,10 @@ services:
 
   # Broker Manager Leader
   leader-mgr:
-    network_mode: "host"
     build: ./broker-manager
     command: uvicorn main:app --host 0.0.0.0 --port 8091 --reload
     environment:
-      - DB_HOST=localhost
+      - DB_HOST=database
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_PORT=5442
@@ -40,11 +39,10 @@ services:
 
   # Broker Manager Follower
   follower-mgr-1:
-    network_mode: "host"
     build: ./broker-manager
     command: uvicorn main:app --host 0.0.0.0 --port 8092 --reload
     environment:
-      - DB_HOST=localhost
+      - DB_HOST=database
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_PORT=5442
@@ -59,11 +57,10 @@ services:
 
   # Broker Manager Follower
   follower-mgr-2:
-    network_mode: "host"
     build: ./broker-manager
     command: uvicorn main:app --host 0.0.0.0 --port 8093 --reload
     environment:
-      - DB_HOST=localhost
+      - DB_HOST=database
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_PORT=5442

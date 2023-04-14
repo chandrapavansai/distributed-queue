@@ -6,10 +6,6 @@ import argparse
 from fastapi import FastAPI, status, Depends, HTTPException, Query,Response
 import schemas
 from broker import Broker
-import docker
-
-
-
 
 app = FastAPI()
 
@@ -25,11 +21,17 @@ async def ping_manager():
     print("leader_url",leader_url,"broker_host",broker_host)   # Create Broker object
     global broker
     broker_url = broker_host + ':' + '9000'
-    broker = Broker(broker_url, {
+
+    # ! For testing purposes
+    config = {
         'test': {
             1: ['distributed-queue-raft-broker1-1:9000','distributed-queue-raft-broker2-1:9000','distributed-queue-raft-broker3-1:9000'],
         }
-    },broker_host)
+    }
+
+    broker = Broker(broker_url, {} ,broker_host)
+
+    broker_url = 'http://'+ broker_host + ':' + '8000'
     try:
         requests.post(f"{leader_url}/broker?url={broker_url}")
         print("Running in manager-connected mode ...")
@@ -87,6 +89,10 @@ def get_message_count(topic: str, partition: int, offset: int = 0):
 @app.get("/messages/delete")
 def delete_message(topic: str, partition: int):
     return broker.delete_topic(topic, partition)
+
+@app.post("/new")
+def add_new(topic: str, partition: int, partners: list = Query([], alias="partners")):
+    return broker.create_topic(topic, partition, partners)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Start the FastAPI server.")

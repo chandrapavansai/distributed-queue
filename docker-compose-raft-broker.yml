@@ -1,10 +1,95 @@
 services:
+  database:
+    image: postgres:12
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=ds-assgn-2-mgr
+#    configs:
+#      - wal_level=logical
+    volumes:
+      - ./db-data-mgr/:/var/lib/postgresql/data/
+    ports:
+      - 5442:5432
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d ds-assgn-2-mgr" ]
+      interval: 5s
+      timeout: 30s
+      retries: 5
+      start_period: 5s
+    networks:
+      - raft-net
+
+
+  # Broker Manager Leader
+  leader-mgr:
+    build: ./broker-manager
+    command: uvicorn main:app --host 0.0.0.0 --port 8091 --reload
+    environment:
+      - DB_HOST=distributed-queue-database-1
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_PORT=5432
+      - DB_NAME=ds-assgn-2-mgr
+      - MGR_URL=http://leader-mgr-1:8091
+      - MGR_LEADER_URL=http://leader-mgr-1:8091
+    volumes:
+      - ./broker-manager:/code
+    ports:
+      - 8091:8091
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - raft-net
+
+
+  # Broker Manager Follower
+  follower-mgr-1:
+    build: ./broker-manager
+    command: uvicorn main:app --host 0.0.0.0 --port 8092 --reload
+    environment:
+      - DB_HOST=distributed-queue-database-1
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_PORT=5432
+      - DB_NAME=ds-assgn-2-mgr
+      - MGR_URL=http://localhost:8092
+      - MGR_LEADER_URL=http://leader-mgr-1:8091
+    volumes:
+      - ./broker-manager:/code
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - raft-net
+
+  # Broker Manager Follower
+  follower-mgr-2:
+    build: ./broker-manager
+    command: uvicorn main:app --host 0.0.0.0 --port 8093 --reload
+    environment:
+      - DB_HOST=distributed-queue-database-1
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_PORT=5432
+      - DB_NAME=ds-assgn-2-mgr
+      - MGR_URL=http://localhost:8093
+      - MGR_LEADER_URL=http://leader-mgr-1:8091
+    volumes:
+      - ./broker-manager:/code
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - raft-net
+        
   raft-broker1:
     build: ./raft-broker
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     environment:
       - BROKER=distributed-queue-raft-broker1-1
-      - LEADER_URL=http://host.docker.internal:8091
+      - LEADER_URL=http://distributed-queue-leader-mgr-1:8091
     ports:
       - 8000:8000
     volumes:
@@ -17,7 +102,7 @@ services:
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     environment:
       - BROKER=distributed-queue-raft-broker2-1
-      - LEADER_URL=http://host.docker.internal:8091
+      - LEADER_URL=http://distributed-queue-leader-mgr-1:8091
     ports:
       - 8001:8000
     volumes:
@@ -30,13 +115,14 @@ services:
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     environment:
       - BROKER=distributed-queue-raft-broker3
-      - LEADER_URL=http://host.docker.internal:8091
+      - LEADER_URL=http://distributed-queue-leader-mgr-1:8091
     ports:
       - 8002:8000
     volumes:
       - ./raft-broker:/code
     networks:
       - raft-net
+
   
 networks:
   raft-net:
