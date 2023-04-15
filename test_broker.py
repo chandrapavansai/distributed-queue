@@ -136,6 +136,7 @@ class TestBroker:
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["content"], "test message")
 
+        
 if __name__ == '__main__':
     test = TestBroker()
 
