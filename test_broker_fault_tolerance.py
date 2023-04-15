@@ -79,6 +79,15 @@ if __name__ == '__main__':
         assertEqual(response.json()["content"], "fault-message")
         print("Got message {} from broker 3".format(response.json()["content"]))
 
+        # Add a new message to broker 2
+        response = requests.post(f"{broker2_url}/messages", json={
+            "topic": "fault-tolerance",
+            "partition": 1,
+            "content": "fault-message-2",
+        })
+        assertEqual(response.status_code, 201)
+        print("Created message 'fault-message-2' on broker 2")
+
 
         print("Getting broker 1 back up")
         # Get broker1 back up
@@ -100,3 +109,23 @@ if __name__ == '__main__':
         assertEqual(response.status_code, 200)
         assertEqual(response.json()["content"], "fault-message")
         print("Got message {} from broker 1".format(response.json()["content"]))
+
+        # Get length of queue from broker 1
+        response = requests.get(f"{broker1_url}/messages/count",params={
+            "topic": "fault-tolerance",
+            "partition": 1,
+        })
+        assertEqual(response.status_code, 200)
+        assertEqual(response.json(), 2)
+        print("Got message count {} from broker 1".format(response.json()))
+
+        # Check if the message exists on broker 1
+        response = requests.get(f"{broker1_url}/messages",params={
+            "topic": "fault-tolerance",
+            "partition": 1,
+            "offset": 1,
+        })
+        assertEqual(response.status_code, 200)
+        print("Got message {} from broker 1".format(response.json()["content"]))
+        assertEqual(response.json()["content"], "fault-message-2")
+              
