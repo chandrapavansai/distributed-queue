@@ -53,26 +53,34 @@ async def consume(topic: str, consumer_id: str, partition: int = None):
     offset = crud.get_offset(consumer_id, partition, cursor)
 
     # Get the broker for the topic and partition
-    broker_num = crud.get_related_broker(topic, partition, cursor)
+    broker_nums = crud.get_brokers_id_from_topic(topic, partition, cursor)
 
-    # Greedy approach to handle broker failure
-    if broker_num is None:
-        if hashing.assign_broker_to_old_partition(topic, partition, cursor) == -1:
-            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                                detail="Unable to process request, No brokers available")
+    # # Greedy approach to handle broker failure
+    # if broker_nums is None:
+    #     if hashing.assign_broker_to_old_partition(topic, partition, cursor) == -1:
+    #         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+    #                             detail="Unable to process request, No brokers available")
 
-    broker_num = crud.get_related_broker(topic, partition, cursor)
-    url = crud.get_broker_url(broker_num, cursor)
+    # broker_nums = crud.get_brokers_id_from_topic(topic, partition, cursor)
+    urls = [crud.get_broker_url(broker_num, cursor)
+            for broker_num in broker_nums]
+
+    response = None
 
     # Get the message from the broker
-    try:
-        response = requests.get(f"{url}/messages", params={
-            "topic": topic,
-            "partition": partition,
-            "offset": offset})
-    except requests.exceptions.ConnectionError:
+    for url in urls:
+        try:
+            response = requests.get(f"{url}/messages", params={
+                "topic": topic,
+                "partition": partition,
+                "offset": offset})
+            break
+        except requests.exceptions.ConnectionError:
+            continue
+
+    if response is None:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail="Unable to process request, Broker is not available")
+                            detail="Unable to process request, No brokers available")
 
     if response.ok:
         crud.increment_offset(consumer_id, partition, cursor)

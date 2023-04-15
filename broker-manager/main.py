@@ -1,7 +1,6 @@
-from fastapi import FastAPI
-
-from api import consumer, producer, topics, heartbeat, managers, broker
 import utils
+from api import broker, consumer, heartbeat, managers, producer, topics
+from fastapi import FastAPI
 
 app = FastAPI(title="Distributed Message Queue", version="0.2.0")
 
@@ -23,7 +22,6 @@ app.include_router(broker.router)
 app.include_router(topics.router)
 app.include_router(producer.router)
 app.include_router(heartbeat.router)
-app.include_router(topics.router)
 app.include_router(consumer.router)
 
 

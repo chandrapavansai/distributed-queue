@@ -1,3 +1,4 @@
+import random
 from uuid import uuid4
 
 import hashing as hashing
@@ -30,7 +31,8 @@ async def enqueue(topic: str, producer_id: str, message: str, partition: int = N
         cursor = db.cursor()
 
         if not crud.producer_exists(producer_id, cursor):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producer does not exist")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Producer does not exist")
 
         if not crud.topic_registered_producer(producer_id, topic, cursor):
             raise HTTPException(
@@ -40,34 +42,50 @@ async def enqueue(topic: str, producer_id: str, message: str, partition: int = N
             # Get the partition number from the database and do Round Robin, and set the next partition
             partition = crud.get_round_robin_partition_producer(
                 producer_id, topic, cursor)
-            
+
         if not crud.partition_registered_producer(producer_id, topic, partition, cursor):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Producer is not registered to this partition")
 
         if not crud.partition_exists(topic, partition, cursor):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Partition does not exist")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Partition does not exist")
 
         # Get the broker for the topic and partition
-        broker_num = crud.get_related_broker(topic, partition, cursor)
+        broker_nums = crud.get_brokers_id_from_topic(topic, partition, cursor)
 
         # Greedy approach to handle broker failure
-        if broker_num is None:
-            if hashing.assign_broker_to_old_partition(topic, partition, cursor) == -1:
-                raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                                    detail="Unable to process request, No brokers available")
-            
-        broker_url = crud.get_broker_url(broker_num, cursor)
+        # if broker_num is None:
+        #     if hashing.assign_broker_to_old_partition(topic, partition, cursor) == -1:
+        #         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        #                             detail="Unable to process request, No brokers available")
+
+        # broker_num = crud.get_brokers_id_from_topic(topic, partition, cursor)
+
+        broker_urls = [crud.get_broker_url(
+            broker_num, cursor) for broker_num in broker_nums]
+
+        # Shuffle the broker urls to avoid always sending to the same broker
+        random.shuffle(broker_urls)
+
+        response = None
 
         # Send the message to the broker
-        try:
-            response = requests.post(f"{broker_url}/messages", json={
-                "topic": topic,
-                "content": message,
-                "partition": partition})
-        except requests.exceptions.ConnectionError:
+        for broker_url in broker_urls:
+            try:
+                response = requests.post(f"{broker_url}/messages", json={
+                    "topic": topic,
+                    "content": message,
+                    "partition": partition})
+                print("Sent to broker", broker_url)
+                break
+            except requests.exceptions.ConnectionError:
+                continue
+
+        if response is None:
+            print("Unable to send to any broker")
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                                detail="Unable to process request, Broker is not available")
+                                detail="Unable to process request, No brokers available")
 
         if response.ok:
             crud.increment_size(topic, partition, cursor)
