@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS Topic (
     size INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (topic_name, partition_id);
+    PRIMARY KEY (topic_name, partition_id)
 );
 
 -- Create a Topic_Broker Table

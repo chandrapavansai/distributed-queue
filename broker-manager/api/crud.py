@@ -189,15 +189,6 @@ def get_size(topic, partition, cursor):
 
 
 # Tested
-def get_related_broker(topic, partition, cursor):
-    if cursor is None:
-        cursor = db.cursor()
-    cursor.execute(
-        "SELECT broker_id FROM Topic_Broker WHERE topic_name = %s AND partition_id = %s", (topic, partition))
-    return cursor.fetchall()
-
-
-# Tested
 def get_broker_url(broker_num, cursor):
     if cursor is None:
         cursor = db.cursor()
@@ -343,16 +334,26 @@ def get_broker_partitions(broker_id, cursor):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute(
-        "SELECT topic_name, partition_id FROM Topic WHERE broker_id = %s", (broker_id,))
+        "SELECT topic_name, partition_id FROM Topic_Broker WHERE broker_id = %s", (broker_id,))
     return cursor.fetchall()
+
+
+def create_partition(topic, partition, cursor):
+    if cursor is None:
+        cursor = db.cursor()
+    cursor.execute(
+        "INSERT INTO Topic (topic_name, partition_id) VALUES (%s, %s)", (topic, partition))
+    pass
 
 
 # Tested
 def set_partition_broker(broker_id, topic, partition, cursor):
     if cursor is None:
         cursor = db.cursor()
+    if not partition_exists(topic, partition, cursor):
+        create_partition(topic, partition, cursor)
     cursor.execute(
-        "INSERT INTO Topic (broker_id, topic_name, partition_id) VALUES (%s, %s, %s)", (broker_id, topic, partition))
+        "INSERT INTO Topic_Broker (broker_id, topic_name, partition_id) VALUES (%s, %s, %s)", (broker_id, topic, partition))
     pass
 
 
@@ -408,6 +409,7 @@ def get_producers(cursor):
         "SELECT DISTINCT producer_id FROM Producer")
     return cursor.fetchall()
 
+
 def delete_manager(url, cursor):
     if cursor is None:
         cursor = db.cursor()
@@ -442,12 +444,12 @@ def get_broker_ids(cursor):
     return [x[0] for x in cursor.fetchall()]
 
 
-def get_broker_id_from_topic(topic, partition, cursor=None):
+def get_brokers_id_from_topic(topic, partition, cursor=None):
     if cursor is None:
         cursor = db.cursor()
     cursor.execute(
-        "SELECT broker_id FROM Topic WHERE topic_name = %s AND partition_id = %s", (topic, partition))
-    return cursor.fetchone()[0]
+        "SELECT broker_id FROM Topic_Broker WHERE topic_name = %s AND partition_id = %s", (topic, partition))
+    return cursor.fetchall()
 
 
 # Delete order matters
@@ -455,5 +457,6 @@ def get_broker_id_from_topic(topic, partition, cursor=None):
 # ("DELETE FROM Producer") -> Producer has a foreign key to Topic
 # ("DELETE FROM ConsumerPartition") -> ConsumerPartition has a foreign key to Consumer
 # ("DELETE FROM Consumer") -> Consumer has a foreign key to Topic
+# ("DELETE FROM Topic_Broker") -> Topic_Broker has a foreign key to Topic
 # ("DELETE FROM Topic") -> Topic has a foreign key to Broker
 # ("DELETE FROM Broker")
