@@ -1,3 +1,5 @@
+# Command to run
+# docker compose --file docker-compose-raft-broker.yml up --build
 services:
   database:
     image: postgres:12
@@ -8,91 +10,75 @@ services:
 #    configs:
 #      - wal_level=logical
     volumes:
-      - ./db-data-mgr/:/var/lib/postgresql/data/
+      - ./db-data-mgr-test/:/var/lib/postgresql/data/
     ports:
       - 5442:5432
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres -d ds-assgn-2-mgr" ]
-      interval: 15s
+      interval: 5s
       timeout: 30s
       retries: 5
       start_period: 5s
+    networks:
+      - raft-net
 
-      
-  postgres1:
-    image: postgres:12
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=ds-assgn-1
-    volumes:
-      - ./db-data-bkr1/:/var/lib/postgresql/data/
-    expose:
-      - 5432
-    ports:
-      - 5433:5432
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d ds-assgn-1" ]
-      interval: 15s
-      timeout: 30s
-      retries: 5
-      start_period: 5s
-  
-  postgres2:
-    image: postgres:12
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=ds-assgn-1
-    volumes:
-      - ./db-data-bkr2/:/var/lib/postgresql/data/
-    expose:
-      - 5432
-    ports:
-      - 5434:5432
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d ds-assgn-1" ]
-      interval: 15s
-      timeout: 30s
-      retries: 5
-      start_period: 5s
 
-  broker1:
-    build: ./broker
-    command: uvicorn main:app --host 0.0.0.0 --port 80 --reload
+  manager-test:
+    build: ./broker-manager
+    command: python -m pytest tests/test_manager.py -v
     environment:
-      - DB_HOST=postgres1
+      - DB_HOST=distributed_queue-database-1
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_PORT=5432
-      - DB_NAME=ds-assgn-1
-      - BROKER_URL=http://localhost:8080
-      - LEADER_URL=
-    ports:
-      - 8080:80
-      - 5678:5678
+      - DB_NAME=ds-assgn-2-mgr
     volumes:
-      - ./broker:/code
+      - ./broker-manager:/code
     depends_on:
-      postgres1:
+      database:
         condition: service_healthy
-  
-  broker2:
-    build: ./broker
-    command: uvicorn main:app --host 0.0.0.0 --port 80 --reload
+    networks:
+      - raft-net
+
+  raft-broker1:
+    build: ./raft-broker
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     environment:
-      - DB_HOST=postgres2
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - DB_PORT=5432
-      - DB_NAME=ds-assgn-1
-      - BROKER_URL=http://localhost:8081
-      - LEADER_URL=
+      - BROKER=raft-broker1
+      - LEADER_URL=http://leader-mgr:8091
     ports:
-      - 8081:80
-      - 5679:5678
+      - 8000:8000
     volumes:
-      - ./broker:/code
-    depends_on:
-      postgres2:
-        condition: service_healthy
+      - ./raft-broker:/code
+    networks:
+      - raft-net
+
+  raft-broker2:
+    build: ./raft-broker
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      - BROKER=raft-broker2
+      - LEADER_URL=http://leader-mgr:8091
+    ports:
+      - 8001:8000
+    volumes:
+      - ./raft-broker:/code
+    networks:
+      - raft-net
+  
+  raft-broker3:
+    build: ./raft-broker
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      - BROKER=raft-broker3
+      - LEADER_URL=http://leader-mgr:8091
+    ports:
+      - 8002:8000
+    volumes:
+      - ./raft-broker:/code
+    networks:
+      - raft-net
+
+networks:
+  raft-net:
+    driver: bridge

@@ -449,7 +449,7 @@ def get_brokers_id_from_topic(topic, partition, cursor=None):
         cursor = db.cursor()
     cursor.execute(
         "SELECT broker_id FROM Topic_Broker WHERE topic_name = %s AND partition_id = %s", (topic, partition))
-    return cursor.fetchall()
+    return [x[0] for x in cursor.fetchall()]
 
 
 # Delete order matters

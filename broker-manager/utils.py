@@ -19,6 +19,9 @@ class HeartbeatThread(Thread):
         Thread.__init__(self)
 
     def run(self):
+        if url is None:
+            print("No URL specified for manager")
+            return
         while True:
             sleep(ACTIVITY_TIMEOUT)
             heartbeat_algorithm()
