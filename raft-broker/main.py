@@ -12,7 +12,7 @@ app = FastAPI()
 leader_url = os.getenv("LEADER_URL")  # "http://localhost:8000"
 broker = None
 broker_host = os.getenv("BROKER")  # "localhost"
-
+pause = False
 
 @app.on_event("startup")
 async def ping_manager():
@@ -42,6 +42,11 @@ async def ping_manager():
 
 @app.middleware("http")
 async def add_process_time_header(request, call_next):
+    # Check if its get request for /pause
+    if not (request.method == "GET" and request.url.path == "/pause"):
+        global pause
+        if pause:
+            return Response(status_code=503)
     start_time = time.time()
     response = await call_next(request)
     process_time = time.time() - start_time
@@ -109,6 +114,16 @@ def add_new(info: schemas.TopicCreate):
 @app.get("/freeport")
 def get_free_port():
     return broker.get_free_port()
+
+@app.get("/pause")
+def pause_broker():
+    global pause
+    if not pause:
+        pause = True
+        return {"message": "Broker paused"}
+    else:
+        pause = False
+        return {"message": "Broker unpaused"}
 
 
 if __name__ == "__main__":
