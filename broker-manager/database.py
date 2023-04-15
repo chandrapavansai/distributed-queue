@@ -38,6 +38,7 @@ def clear_db():
         cursor.execute("DELETE FROM Producer")
         cursor.execute("DELETE FROM ConsumerPartition") 
         cursor.execute("DELETE FROM Consumer")
+        cursor.execute("DELETE FROM Topic_Broker")
         cursor.execute("DELETE FROM Topic")
         cursor.execute("DELETE FROM Broker")
         db.commit()

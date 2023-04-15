@@ -1,11 +1,14 @@
 import random
 
+import requests
 from api import crud
 from database import db
 
 REPLICA_COUNT = 3
 
 # utility functions for using the hash ring
+
+
 def get_active_brokers(cursor=None):
     if cursor is None:
         cursor = db.cursor()
@@ -52,7 +55,7 @@ def remove_brokers(remove_ids_list: list, cursor=None):
     transfer_list = []
     for id in remove_ids_list:
         cursor.execute(
-            "SELECT topic_name, partition_id FROM Topic WHERE broker_id = %s", (id,))
+            "SELECT topic_name, partition_id FROM Topic_Broker WHERE broker_id = %s", (id,))
         for topic, partition in cursor.fetchall():
             transfer_list.append((topic, partition,))
 
@@ -74,7 +77,7 @@ def remove_brokers(remove_ids_list: list, cursor=None):
     return no_of_brokers
 
 
-def assign_broker_to_new_partition(topic: str, partition: int, cursor=None):
+def assign_brokers_to_new_partition(topic: str, partition: int, cursor=None):
     """
     Endpoint to create a partition for a topic
     :param topic: name of the topic
@@ -86,13 +89,49 @@ def assign_broker_to_new_partition(topic: str, partition: int, cursor=None):
     if cursor is None:
         cursor = db.cursor()
 
-    # Select 3 brokers at random from all the active brokers
-    selected_brokers = random.sample(active_brokers, REPLICA_COUNT)
+    no_of_brokers = len(active_brokers)
 
-    for new_broker_id in selected_brokers:
+    if no_of_brokers < REPLICA_COUNT:
+        raise Exception("Not enough brokers to create partition")
+
+    # Select 3 brokers at random from all the active brokers
+    broker_ids = random.sample(active_brokers, REPLICA_COUNT)
+
+    # We get the ids of the brokers
+    broker_ips = [crud.get_broker_url(broker_id, cursor)
+                  for broker_id in broker_ids]
+
+    broker_raft_ips = []
+
+    # Get the free port for each broker
+    for broker_ip in broker_ips:
+        try:
+            freeport = requests.get(f"{broker_ip}/freeport").json()
+        except:
+            raise Exception("Could not connect to broker")
+
+        if freeport == -1:
+            raise Exception("Could not find free port for broker")
+
+        if broker_ip.startswith("http://") or broker_ip.startswith("https://"):
+            broker_ip = broker_ip.split("//")[1]
+
+        broker_host = broker_ip.split(":")[0]
+        broker_raft_ips.append(f"{broker_host}:{freeport}")
+
+    for broker_ip in broker_ips:
+        # Send a request to the broker to create a new partition
+        try:
+            requests.post(f"{broker_ip}/new", json={
+                "topic": topic, "partition": partition, "partners": broker_raft_ips})
+        except:
+            raise Exception("Could not connect to broker")
+
+    for new_broker_id in broker_ids:
         crud.set_partition_broker(new_broker_id, topic, partition, cursor)
-    
-    return selected_brokers
+
+    return broker_ids
+
 
 def assign_broker_to_old_partition(topic: str, partition: int, cursor=None):
     """
@@ -113,6 +152,5 @@ def assign_broker_to_old_partition(topic: str, partition: int, cursor=None):
         crud.update_partition_broker(new_broker_id, topic, partition, cursor)
         return 0
 
-    crud.update_partition_broker(None, topic, partition, cursor)    
+    crud.update_partition_broker(None, topic, partition, cursor)
     return -1
-
