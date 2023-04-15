@@ -15,3 +15,9 @@ class Message(MessageBase):
 class MessageCreate(MessageBase):
     topic: str
     partition: int
+
+
+class TopicCreate(BaseModel):
+    topic: str
+    partition: int
+    partners: list

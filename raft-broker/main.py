@@ -3,34 +3,35 @@ import os
 import uvicorn
 import requests
 import argparse
-from fastapi import FastAPI, status, Depends, HTTPException, Query,Response
+from fastapi import FastAPI, status, Depends, HTTPException, Query, Response
 import schemas
 from broker import Broker
 
 app = FastAPI()
 
-leader_url = os.getenv("LEADER_URL") # "http://localhost:8000"
+leader_url = os.getenv("LEADER_URL")  # "http://localhost:8000"
 broker = None
-broker_host = os.getenv("BROKER") # "localhost"
+broker_host = os.getenv("BROKER")  # "localhost"
 
 
 @app.on_event("startup")
 async def ping_manager():
     print(leader_url)
     print(broker_host)
-    print("leader_url",leader_url,"broker_host",broker_host)   # Create Broker object
+    print("leader_url", leader_url, "broker_host",
+          broker_host)   # Create Broker object
 
     # ! For testing purposes
-    config = {
-        'test': {
-            1: ['raft-broker1:9000','raft-broker2:9000','raft-broker3:9000'],
-        }
-    }
+    # config = {
+    #     'test': {
+    #         1: ['raft-broker1:9000','raft-broker2:9000','raft-broker3:9000'],
+    #     }
+    # }
 
     global broker
-    broker = Broker({} ,broker_host)
+    broker = Broker({}, broker_host)
 
-    broker_url = 'http://'+ broker_host + ':' + '8000'
+    broker_url = 'http://' + broker_host + ':' + '8000'
     try:
         requests.post(f"{leader_url}/broker?url={broker_url}")
         print("Running in manager-connected mode ...")
@@ -56,6 +57,9 @@ def ping():
 @app.get("/messages", response_model=schemas.Message)
 def get_message(topic: str, partition: int, offset: int = 0):
     message = broker.get_message(topic, partition, offset)
+    if message is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="No message found")
     result = schemas.Message(id=offset, content=message)
     if result is None:
         raise HTTPException(
@@ -63,14 +67,12 @@ def get_message(topic: str, partition: int, offset: int = 0):
     return result
 
 
-@app.post("/messages",status_code=status.HTTP_201_CREATED)
-def post_message(content: str, topic: str, partition: int, partners: list = Query([], alias="partners")):
-    partners = partners[0].split(',')
-    print(topic)
-    print(partition)
-    print(content)
-    print(partners)
-    len = broker.create_message(topic,partition,content,partners)
+@app.post("/messages", status_code=status.HTTP_201_CREATED)
+def post_message(message: schemas.MessageCreate):
+    # partners = partners[0].split(',')
+    print(message)
+    len = broker.create_message(
+        message.topic, message.partition, message.content)
     if len is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="No message found")
@@ -79,7 +81,7 @@ def post_message(content: str, topic: str, partition: int, partners: list = Quer
 
 @app.get("/messages/count")
 def get_message_count(topic: str, partition: int, offset: int = 0):
-    cnt =  broker.get_message_count(topic, partition, offset)
+    cnt = broker.get_message_count(topic, partition, offset)
     # If cnt is None, raise http Exception
     if cnt is None:
         raise HTTPException(
@@ -87,26 +89,32 @@ def get_message_count(topic: str, partition: int, offset: int = 0):
     return cnt
 
 # delete a topic-partition
+
 @app.get("/messages/delete")
 def delete_message(topic: str, partition: int):
     return broker.delete_topic(topic, partition)
 
+
 @app.post("/new")
-def add_new(topic: str, partition: int, partners: list = Query([], alias="partners")):
-    partners = partners[0].split(',')
+# def add_new(topic: str, partition: int, partners: list = Query([], alias="partners")):
+def add_new(info: schemas.TopicCreate):
+    # partners = partners[0].split(',')
     # Creating new topic-partition
-    print(topic)
-    print(partition)
-    print(partners)
-    return broker.create_topic(topic, partition, partners)
+    print(info.topic)
+    print(info.partition)
+    print(info.partners)
+    return broker.create_topic(info.topic, info.partition, info.partners)
+
 
 @app.get("/freeport")
 def get_free_port():
     return broker.get_free_port()
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Start the FastAPI server.")
-    parser.add_argument("--port", type=int, default=8000, help="Port number to start the server on.")
+    parser.add_argument("--port", type=int, default=8000,
+                        help="Port number to start the server on.")
     args = parser.parse_args()
     port = args.port
     uvicorn.run(app, host="0.0.0.0", port=port)

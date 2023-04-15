@@ -5,7 +5,7 @@ class Broker:
     def __init__(self,topics,host):
         self.host = host
 
-        port_lock = threading.Lock()
+        self.port_lock = threading.Lock()
 
         # Maintain locks for each topic and partition
         self.locks = {}
@@ -48,7 +48,7 @@ class Broker:
     def exists(self, topic, partition):
         return topic in self.raft and partition in self.raft[topic]
 
-    def create_message(self, topic, partition, message, partners):
+    def create_message(self, topic, partition, message):
 
         if not self.exists(topic,partition):
             return
