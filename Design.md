@@ -82,3 +82,10 @@ TODO
 
 Faced some issues while trying to make some of the database transactions atomic (for persistence), had to use db.rollback() in case of any issues with the update queries. Faced some issues with dockerization.
  -->
+ 
+ ## Future Scope
+ 
+ + For now Broker Manager is a single point of failure. Raft protocol can be implemented for Managers so that new leader can be elected when existing leader goes down and service discovery can be added for addition of new broker managers.
+ + While implementing Raft for Managers, a single cluster would be used for both the read and write managers as the updates made to the distributed log file would have to be used by the read managers too.
+ + When the existing manager goes down, newly elected secondary manager would now synchronize using the log and serve as the primary manager. The Raft algorithm would take care of the leader election.
+ 
